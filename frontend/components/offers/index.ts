@@ -1,0 +1,1 @@
+export { LocalOffersSection } from './LocalOffersSection';
