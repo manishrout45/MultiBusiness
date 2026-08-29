@@ -1,13 +1,12 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { Suspense } from 'react';
 import { LoginForm } from '@/components/auth/LoginForm';
 
-export const metadata: Metadata = {
-  title: 'Sign in',
-  description: 'Sign in to your LocalMarket account.',
-};
-
 export default function LoginPage() {
+  useEffect(() => {
+    document.title = 'Sign in | LocalMart';
+  }, []);
+
   return (
     <div className="container flex min-h-[70vh] items-center justify-center py-12">
       <div className="w-full max-w-md rounded-2xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">

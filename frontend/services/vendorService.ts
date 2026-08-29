@@ -1,6 +1,69 @@
 import { AUTH_TOKEN_KEY } from '@/features/auth/types';
 import { MOCK_VENDOR_PROFILE, type VendorProfile, type VendorProfileUpdate } from '@/features/vendor';
-import { apiRequest } from '@/lib/api';
+import { apiRequest, ApiError } from '@/lib/api';
+
+export async function registerVendor(input: {
+  ownerName: string;
+  businessName: string;
+  businessType: string;
+  categoryId?: string | number;
+  description?: string;
+  address: string;
+  city: string;
+  state?: string;
+  phone: string;
+  email?: string;
+  gstNumber?: string;
+  logo?: File;
+  cover?: File;
+}): Promise<unknown> {
+  const token = getToken();
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api';
+
+  const form = new FormData();
+  form.append('owner_name', input.ownerName);
+  form.append('business_name', input.businessName);
+  form.append('business_type', input.businessType);
+  form.append('address', input.address);
+  form.append('city', input.city);
+  form.append('phone', input.phone);
+  if (input.categoryId != null) form.append('category_id', String(input.categoryId));
+  if (input.description) form.append('description', input.description);
+  if (input.state) form.append('state', input.state);
+  if (input.email) form.append('email', input.email);
+  if (input.gstNumber) form.append('gst_number', input.gstNumber);
+  if (input.logo) form.append('logo', input.logo);
+  if (input.cover) form.append('cover', input.cover);
+
+  const response = await fetch(`${API_BASE}/vendor/register`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+
+  const text = await response.text();
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = text;
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      typeof payload === 'object' &&
+      payload !== null &&
+      'message' in payload &&
+      typeof (payload as { message: unknown }).message === 'string'
+        ? (payload as { message: string }).message
+        : `Request failed (${response.status})`;
+    throw new ApiError(message, response.status, payload);
+  }
+
+  return payload;
+}
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;

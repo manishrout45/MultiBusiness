@@ -17,13 +17,15 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
   token?: string | null;
   /** Skip JSON parse for empty responses */
   raw?: boolean;
+  /** Next.js cache hint — ignored in the React SPA */
+  next?: unknown;
 }
 
 export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
-  const { body, token, headers, raw, ...rest } = options;
+  const { body, token, headers, raw, next: _next, ...rest } = options;
 
   const response = await fetch(`${API_BASE}${path.startsWith('/') ? path : `/${path}`}`, {
     ...rest,

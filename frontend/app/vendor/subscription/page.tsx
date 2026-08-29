@@ -1,11 +1,10 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { SubscriptionPageClient } from '@/features/subscription';
 
-export const metadata: Metadata = {
-  title: 'Subscription',
-  description: 'Choose a LocalMarket vendor subscription plan.',
-};
-
 export default function VendorSubscriptionPage() {
+  useEffect(() => {
+    document.title = 'Subscription | LocalMart';
+  }, []);
+
   return <SubscriptionPageClient />;
 }

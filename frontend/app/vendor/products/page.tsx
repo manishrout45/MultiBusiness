@@ -1,11 +1,10 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { VendorProductsPageClient } from '@/features/products/VendorProductsPageClient';
 
-export const metadata: Metadata = {
-  title: 'Vendor products',
-  description: 'Manage your product catalog.',
-};
-
 export default function VendorProductsPage() {
+  useEffect(() => {
+    document.title = 'Vendor products | LocalMart';
+  }, []);
+
   return <VendorProductsPageClient />;
 }

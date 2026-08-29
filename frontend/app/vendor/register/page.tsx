@@ -1,12 +1,11 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { VendorRegisterPageClient } from '@/features/vendor/VendorRegisterPageClient';
 
-export const metadata: Metadata = {
-  title: 'Become a Seller — LocalMart',
-  description: 'Register your business on LocalMart and start selling locally.',
-};
-
 export default function VendorRegisterPage() {
+  useEffect(() => {
+    document.title = 'Become a Seller — LocalMart';
+  }, []);
+
   return (
     <div className="container py-10 md:py-14">
       <VendorRegisterPageClient />

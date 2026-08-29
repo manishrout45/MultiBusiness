@@ -1,11 +1,10 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { CheckoutPageClient } from '@/features/payment/CheckoutPageClient';
 
-export const metadata: Metadata = {
-  title: 'Checkout',
-  description: 'Complete your purchase securely.',
-};
-
 export default function CheckoutPage() {
+  useEffect(() => {
+    document.title = 'Checkout | LocalMart';
+  }, []);
+
   return <CheckoutPageClient />;
 }

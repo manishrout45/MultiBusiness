@@ -1,10 +1,10 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { VendorOrdersPageClient } from '@/features/vendor-dashboard/VendorOrdersPageClient';
 
-export const metadata: Metadata = {
-  title: 'Vendor Orders — LocalMart',
-};
-
 export default function VendorOrdersPage() {
+  useEffect(() => {
+    document.title = 'Vendor Orders — LocalMart';
+  }, []);
+
   return <VendorOrdersPageClient />;
 }

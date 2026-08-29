@@ -1,11 +1,10 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { OrdersPageClient } from '@/features/orders';
 
-export const metadata: Metadata = {
-  title: 'Orders',
-  description: 'View your order history and track deliveries.',
-};
-
 export default function OrdersPage() {
+  useEffect(() => {
+    document.title = 'Orders | LocalMart';
+  }, []);
+
   return <OrdersPageClient />;
 }

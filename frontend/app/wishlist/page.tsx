@@ -1,10 +1,10 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { WishlistPageClient } from './WishlistPageClient';
 
-export const metadata: Metadata = {
-  title: 'Wishlist — LocalMart',
-};
-
 export default function WishlistPage() {
+  useEffect(() => {
+    document.title = 'Wishlist — LocalMart';
+  }, []);
+
   return <WishlistPageClient />;
 }

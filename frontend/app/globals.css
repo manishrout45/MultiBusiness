@@ -28,6 +28,8 @@
     --services: 262 55% 52%;
     --trust: 217 85% 48%;
     --section-y: clamp(3rem, 5vw, 5rem);
+    --font-geist-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-geist-mono: 'Geist Mono', ui-monospace, monospace;
   }
 
   * {

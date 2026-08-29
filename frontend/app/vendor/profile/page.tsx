@@ -1,11 +1,10 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { VendorProfilePageClient } from '@/features/vendor/VendorProfilePageClient';
 
-export const metadata: Metadata = {
-  title: 'Vendor profile',
-  description: 'Manage your business profile and storefront details.',
-};
-
 export default function VendorProfilePage() {
+  useEffect(() => {
+    document.title = 'Vendor profile | LocalMart';
+  }, []);
+
   return <VendorProfilePageClient />;
 }

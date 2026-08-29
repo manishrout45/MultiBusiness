@@ -1,12 +1,12 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { CategoriesExplorer } from '@/features/categories';
 import { MARKETPLACE_CATEGORIES } from '@/lib/constants';
 
-export const metadata: Metadata = {
-  title: 'Vendor categories',
-};
-
 export default function VendorCategoriesPage() {
+  useEffect(() => {
+    document.title = 'Vendor categories | LocalMart';
+  }, []);
+
   return (
     <CategoriesExplorer
       title="Category catalog"

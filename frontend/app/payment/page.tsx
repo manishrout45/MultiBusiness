@@ -1,11 +1,7 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { Suspense } from 'react';
 import { PaymentPageClient } from '@/features/payment';
 import { Skeleton } from '@/components/ui/skeleton';
-
-export const metadata: Metadata = {
-  title: 'Payment',
-};
 
 function PaymentFallback() {
   return (
@@ -16,6 +12,10 @@ function PaymentFallback() {
 }
 
 export default function PaymentPage() {
+  useEffect(() => {
+    document.title = 'Payment | LocalMart';
+  }, []);
+
   return (
     <Suspense fallback={<PaymentFallback />}>
       <PaymentPageClient />

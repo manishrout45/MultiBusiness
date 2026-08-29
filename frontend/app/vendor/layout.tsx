@@ -1,24 +1,23 @@
-'use client';
-
+import { Outlet } from 'react-router-dom';
 import { usePathname } from 'next/navigation';
 import { RequireAuth, RequireRole } from '@/features/auth/RequireRole';
 import { VendorNav } from '@/components/layout/VendorNav';
 
-export default function VendorLayout({ children }: { children: React.ReactNode }) {
+export default function VendorLayout() {
   const pathname = usePathname();
   const isPublicVendorRoute =
     pathname === '/vendor/register' || pathname?.startsWith('/vendor/register/');
   const isDashboardShell = pathname?.startsWith('/vendor/dashboard');
 
   if (isPublicVendorRoute) {
-    return <>{children}</>;
+    return <Outlet />;
   }
 
   if (isDashboardShell) {
     return (
       <RequireAuth fallbackHref="/login">
         <RequireRole roles={['vendor']} fallbackHref="/">
-          {children}
+          <Outlet />
         </RequireRole>
       </RequireAuth>
     );
@@ -35,7 +34,9 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
               </p>
               <VendorNav />
             </aside>
-            <div className="min-w-0">{children}</div>
+            <div className="min-w-0">
+              <Outlet />
+            </div>
           </div>
         </div>
       </RequireRole>

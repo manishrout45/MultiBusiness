@@ -1,12 +1,11 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 
-export const metadata: Metadata = {
-  title: 'Create account',
-  description: 'Join LocalMarket as a customer or vendor.',
-};
-
 export default function RegisterPage() {
+  useEffect(() => {
+    document.title = 'Create account | LocalMart';
+  }, []);
+
   return (
     <div className="container flex min-h-[70vh] items-center justify-center py-12">
       <div className="w-full max-w-md rounded-2xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">

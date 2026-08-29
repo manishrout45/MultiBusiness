@@ -1,26 +1,33 @@
-import type { Metadata } from 'next';
+import { useEffect, useState } from 'react';
 import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { BusinessCard } from '@/components/BusinessCard';
 import { BusinessesSearchPanel } from '@/components/businesses/BusinessesSearchPanel';
 import { fetchBusinesses } from '@/services/businessService';
+import type { BusinessListResponse } from '@/features/businesses';
 
-export const metadata: Metadata = {
-  title: 'Browse businesses',
-  description: 'Search and explore local businesses on LocalMarket.',
-};
+export default function BusinessesPage() {
+  const searchParams = useSearchParams();
+  const q = searchParams.get('q') || undefined;
+  const category = searchParams.get('category') || undefined;
+  const city = searchParams.get('city') || undefined;
+  const [result, setResult] = useState<BusinessListResponse | null>(null);
 
-interface BusinessesPageProps {
-  searchParams: Promise<{ q?: string; category?: string; city?: string }>;
-}
-
-export default async function BusinessesPage({ searchParams }: BusinessesPageProps) {
-  const params = await searchParams;
-  const result = await fetchBusinesses({
-    query: params.q,
-    category: params.category,
-    city: params.city,
-    limit: 24,
-  });
+  useEffect(() => {
+    document.title = 'Browse businesses | LocalMart';
+    let cancelled = false;
+    fetchBusinesses({
+      query: q,
+      category,
+      city,
+      limit: 24,
+    }).then((data) => {
+      if (!cancelled) setResult(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [q, category, city]);
 
   return (
     <div className="pb-16">
@@ -41,12 +48,17 @@ export default async function BusinessesPage({ searchParams }: BusinessesPagePro
       <section className="container mt-10">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            Showing {result.data.length} business{result.data.length === 1 ? '' : 'es'}
-            {result.source === 'fallback' ? ' (demo data — API offline)' : ''}
+            {result
+              ? `Showing ${result.data.length} business${result.data.length === 1 ? '' : 'es'}${
+                  result.source === 'fallback' ? ' (demo data — API offline)' : ''
+                }`
+              : 'Loading businesses…'}
           </p>
         </div>
 
-        {result.data.length === 0 ? (
+        {!result ? (
+          <div className="h-40 animate-pulse rounded-2xl bg-muted/40" />
+        ) : result.data.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-16 text-center">
             <h2 className="text-lg font-semibold">No businesses found</h2>
             <p className="mt-2 text-sm text-muted-foreground">

@@ -1,11 +1,10 @@
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
 import { CartPageClient } from '@/features/cart';
 
-export const metadata: Metadata = {
-  title: 'Cart',
-  description: 'Review your cart and proceed to checkout.',
-};
-
 export default function CartPage() {
+  useEffect(() => {
+    document.title = 'Cart | LocalMart';
+  }, []);
+
   return <CartPageClient />;
 }

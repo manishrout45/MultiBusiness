@@ -1,14 +1,20 @@
-import type { Metadata } from 'next';
+import { useEffect, useState } from 'react';
 import { CategoriesExplorer } from '@/features/categories';
-import { listCategories } from '@/services/categoryService';
+import { listCategories, type CategoryDto } from '@/services/categoryService';
 
-export const metadata: Metadata = {
-  title: 'Categories',
-  description: 'Browse local businesses by category.',
-};
+export default function CategoriesPage() {
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
 
-export default async function CategoriesPage() {
-  const categories = await listCategories();
+  useEffect(() => {
+    document.title = 'Categories | LocalMart';
+    let cancelled = false;
+    listCategories().then((data) => {
+      if (!cancelled) setCategories(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="container py-12 md:py-16">
