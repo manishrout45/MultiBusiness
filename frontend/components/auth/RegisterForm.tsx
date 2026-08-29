@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { AuthSocialOptions } from '@/components/auth/AuthSocialOptions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/features/auth';
+import { APP_NAME } from '@/lib/constants';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -44,25 +46,18 @@ export function RegisterForm({ className }: { className?: string }) {
   };
 
   return (
-    <form onSubmit={onSubmit} className={cn('space-y-4', className)}>
-      <div className="space-y-2">
-        <label htmlFor="name" className="text-sm font-medium">
-          Full name
-        </label>
+    <div className={cn('space-y-5', className)}>
+      <form onSubmit={onSubmit} className="space-y-4">
         <Input
           id="name"
           required
           minLength={2}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Jane Doe"
+          placeholder="Full name"
+          className="h-12 rounded-xl border-neutral-300 bg-white text-base shadow-none focus-visible:ring-neutral-900"
         />
-      </div>
 
-      <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
-          Email
-        </label>
         <Input
           id="email"
           type="email"
@@ -70,27 +65,19 @@ export function RegisterForm({ className }: { className?: string }) {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          placeholder="Email address"
+          className="h-12 rounded-xl border-neutral-300 bg-white text-base shadow-none focus-visible:ring-neutral-900"
         />
-      </div>
 
-      <div className="space-y-2">
-        <label htmlFor="phone" className="text-sm font-medium">
-          Phone <span className="text-muted-foreground">(optional)</span>
-        </label>
         <Input
           id="phone"
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          placeholder="+91 98765 43210"
+          placeholder="Phone (optional)"
+          className="h-12 rounded-xl border-neutral-300 bg-white text-base shadow-none focus-visible:ring-neutral-900"
         />
-      </div>
 
-      <div className="space-y-2">
-        <label htmlFor="password" className="text-sm font-medium">
-          Password
-        </label>
         <Input
           id="password"
           type="password"
@@ -99,12 +86,10 @@ export function RegisterForm({ className }: { className?: string }) {
           minLength={6}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="At least 6 characters"
+          placeholder="Password (at least 6 characters)"
+          className="h-12 rounded-xl border-neutral-300 bg-white text-base shadow-none focus-visible:ring-neutral-900"
         />
-      </div>
 
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">I want to join as</legend>
         <div className="grid grid-cols-2 gap-2">
           {(
             [
@@ -117,41 +102,47 @@ export function RegisterForm({ className }: { className?: string }) {
               type="button"
               onClick={() => setRole(option.value)}
               className={cn(
-                'rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                'h-11 rounded-xl border text-sm font-medium transition-colors',
                 role === option.value
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-background text-muted-foreground hover:bg-accent'
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50'
               )}
             >
               {option.label}
             </button>
           ))}
         </div>
-      </fieldset>
 
-      {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
-
-      <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? (
-          <>
-            <Loader2 className="animate-spin" />
-            Creating account…
-          </>
-        ) : (
-          'Create account'
+        {error && (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
         )}
-      </Button>
 
-      <p className="text-center text-sm text-muted-foreground">
-        Already registered?{' '}
-        <Link href="/login" className="font-medium text-primary hover:underline">
-          Sign in
+        <Button
+          type="submit"
+          disabled={pending}
+          className="h-12 w-full rounded-xl bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90"
+        >
+          {pending ? (
+            <>
+              <Loader2 className="animate-spin" />
+              Creating account…
+            </>
+          ) : (
+            'Continue with email'
+          )}
+        </Button>
+      </form>
+
+      <AuthSocialOptions />
+
+      <p className="pt-1 text-center text-sm text-neutral-600">
+        Already have a {APP_NAME} account?{' '}
+        <Link href="/login" className="font-medium text-neutral-950 underline underline-offset-2">
+          Log in
         </Link>
       </p>
-    </form>
+    </div>
   );
 }
