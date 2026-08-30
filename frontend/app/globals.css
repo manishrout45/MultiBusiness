@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /*
+     * Theme tokens — change these few values to retheme the app.
+     * Mirror hex values in lib/theme.ts for JS consumers.
+     * primary #152651 · secondary #EEF2F7 · success #0B8F55 · danger #DC2626
+     * warning #D97706 · info #2563EB · light #F8FAFC · dark #0F172A
+     */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    /* Navy #152651 */
+    --primary: 224 59% 20%;
+    --primary-foreground: 0 0% 100%;
+    /* Soft blue-gray */
+    --secondary: 216 33% 95%;
+    --secondary-foreground: 224 59% 20%;
+    --success: 153 86% 30%;
+    --success-foreground: 0 0% 100%;
+    --danger: 0 72% 51%;
+    --danger-foreground: 0 0% 100%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 0 0% 100%;
+    --info: 217 91% 53%;
+    --info-foreground: 0 0% 100%;
+    --light: 210 40% 98%;
+    --light-foreground: 222 47% 11%;
+    --dark: 222 47% 11%;
+    --dark-foreground: 0 0% 100%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 14% 42%;
+    --accent: 216 33% 95%;
+    --accent-foreground: 224 59% 20%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 224 59% 20%;
+    --radius: 0.75rem;
+    --offer: 24 95% 53%;
+    --services: 262 55% 52%;
+    --trust: 217 85% 48%;
+    --section-y: clamp(2rem, 4vw, 3.5rem);
+    --font-geist-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-geist-mono: 'Geist Mono', ui-monospace, monospace;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight text-foreground;
+  }
+}
+
+@layer components {
+  .lm-section {
+    padding-block: var(--section-y);
+  }
+
+  .lm-section-title {
+    @apply text-2xl font-bold tracking-tight text-foreground sm:text-3xl;
+  }
+
+  .lm-section-sub {
+    @apply mt-1.5 max-w-xl text-sm text-muted-foreground sm:text-base;
+  }
+
+  .lm-card {
+    @apply rounded-3xl border border-border/80 bg-card marketplace-shadow;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .marketplace-shadow {
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 8px 24px -6px rgb(21 38 81 / 0.1);
+  }
+
+  .marketplace-shadow-lg {
+    box-shadow:
+      0 2px 4px rgb(15 23 42 / 0.04),
+      0 18px 48px -12px rgb(21 38 81 / 0.16);
+  }
+
+  /* Per-category theme scope (set via CategoryThemeScope inline vars) */
+  .category-themed {
+    --primary: var(--category-theme);
+    --primary-foreground: var(--category-theme-foreground);
+    --secondary: var(--category-theme-soft);
+    --secondary-foreground: var(--category-theme);
+    --accent: var(--category-theme-soft);
+    --accent-foreground: var(--category-theme);
+    --ring: var(--category-theme);
+  }
+
+  .category-themed .text-primary {
+    color: hsl(var(--category-theme));
+  }
+
+  .category-themed .bg-primary {
+    background-color: hsl(var(--category-theme));
+  }
+
+  .category-themed .border-primary {
+    border-color: hsl(var(--category-theme));
+  }
+}

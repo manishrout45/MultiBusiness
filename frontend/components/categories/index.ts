@@ -1,0 +1,1 @@
+export { PopularCategoriesSection } from './PopularCategoriesSection';
