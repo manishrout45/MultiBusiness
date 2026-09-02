@@ -6,11 +6,39 @@ export interface CatalogProduct extends Product {
   businessName?: string;
   businessSlug?: string;
   rating?: number;
+  reviewCount?: number;
   imageUrl?: string;
   latitude?: number | null;
   longitude?: number | null;
   city?: string;
   distanceKm?: number | null;
+}
+
+export interface ProductDetail extends CatalogProduct {
+  business?: {
+    id: string;
+    businessName: string;
+    slug?: string;
+    city?: string;
+    phone?: string;
+    whatsapp?: string;
+    logo?: string | null;
+    businessType?: string;
+    description?: string;
+  };
+  variations: Array<{
+    id: string;
+    name: string;
+    value: string;
+    priceAdjustment: number;
+    stock: number;
+  }>;
+  reviews: Array<{
+    id: string;
+    userName: string;
+    rating: number;
+    comment?: string;
+  }>;
 }
 
 export interface ProductSearchParams {
@@ -79,5 +107,64 @@ export async function searchCatalogProducts(
     return (res.data || []).map(mapRow);
   } catch {
     return [];
+  }
+}
+
+function mapDetail(row: Record<string, unknown>): ProductDetail {
+  const base = mapRow(row);
+  const business = row.business as Record<string, unknown> | null;
+  const images = base.images.length
+    ? base.images
+    : Array.isArray(row.images)
+      ? (row.images as { file_path?: string }[])
+          .map((img) => img.file_path || '')
+          .filter(Boolean)
+      : [];
+
+  return {
+    ...base,
+    images,
+    imageUrl: images[0] || base.imageUrl,
+    rating: row.avg_rating != null ? Number(row.avg_rating) : base.rating,
+    reviewCount: row.review_count != null ? Number(row.review_count) : undefined,
+    business: business
+      ? {
+          id: String(business.id),
+          businessName: String(business.business_name ?? ''),
+          slug: business.slug ? String(business.slug) : undefined,
+          city: business.city ? String(business.city) : undefined,
+          phone: business.phone ? String(business.phone) : undefined,
+          whatsapp: business.whatsapp ? String(business.whatsapp) : undefined,
+          logo: business.logo ? String(business.logo) : null,
+          businessType: business.business_type ? String(business.business_type) : undefined,
+          description: business.description ? String(business.description) : undefined,
+        }
+      : undefined,
+    variations: Array.isArray(row.variations)
+      ? (row.variations as Record<string, unknown>[]).map((v) => ({
+          id: String(v.id),
+          name: String(v.variation_name ?? 'Size'),
+          value: String(v.variation_value ?? ''),
+          priceAdjustment: Number(v.price_adjustment ?? 0),
+          stock: Number(v.stock ?? 0),
+        }))
+      : [],
+    reviews: Array.isArray(row.reviews)
+      ? (row.reviews as Record<string, unknown>[]).map((r) => ({
+          id: String(r.id),
+          userName: String(r.user_name ?? 'Customer'),
+          rating: Number(r.rating ?? 0),
+          comment: r.comment ? String(r.comment) : undefined,
+        }))
+      : [],
+  };
+}
+
+export async function getCatalogProduct(id: string): Promise<ProductDetail | null> {
+  try {
+    const res = await apiRequest<{ data: Record<string, unknown> }>(`/products/${id}`);
+    return mapDetail(res.data);
+  } catch {
+    return null;
   }
 }

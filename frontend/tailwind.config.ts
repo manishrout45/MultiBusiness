@@ -81,6 +81,9 @@ const config: Config = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      backgroundImage: {
+        'brand-gradient': 'linear-gradient(135deg, var(--brand-from) 0%, var(--brand-to) 100%)',
+      },
       fontFamily: {
         sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
       },

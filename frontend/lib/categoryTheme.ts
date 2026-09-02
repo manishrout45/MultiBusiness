@@ -17,7 +17,7 @@ export function normalizeHexColor(value: string | null | undefined): string {
   return DEFAULT_CATEGORY_THEME;
 }
 
-function hexToHsl(hex: string): { h: number; s: number; l: number } {
+export function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const normalized = normalizeHexColor(hex).slice(1);
   const r = parseInt(normalized.slice(0, 2), 16) / 255;
   const g = parseInt(normalized.slice(2, 4), 16) / 255;

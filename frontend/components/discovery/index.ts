@@ -1,4 +1,6 @@
 export { DiscoverySearch } from './DiscoverySearch';
+export { DiscoveryMapSearch } from './DiscoveryMapSearch';
+export { HomeHeroBanner } from './HomeHeroBanner';
 export { LocationSelector } from './LocationSelector';
 export { RadiusSelector } from './RadiusSelector';
 export { CategoryFilter } from './CategoryFilter';

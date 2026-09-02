@@ -27,9 +27,7 @@ function formatPrice(n: number) {
 export function MarketplaceProductCard({ product, className }: MarketplaceProductCardProps) {
   const price = product.salePrice ?? product.price;
   const image = product.imageUrl || product.images[0] || PLACEHOLDER;
-  const href = product.businessSlug
-    ? `/business/${product.businessSlug}`
-    : `/products?q=${encodeURIComponent(product.name)}`;
+  const href = `/products/${product.id}`;
 
   return (
     <article

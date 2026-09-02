@@ -27,7 +27,7 @@ const DEFAULT_THEMES: Record<string, string> = {
   'book-store': '#4F46E5',
   'xerox-print-shop': '#64748B',
   'tour-travel-agency': '#0D9488',
-  'real-estate': '#152651',
+  'real-estate': '#484AAA',
   'jewellery-shop': '#CA8A04',
   'footwear-shop': '#9333EA',
   'gift-shop': '#E11D48',
@@ -46,7 +46,7 @@ const DEFAULT_THEMES: Record<string, string> = {
 };
 
 export function defaultThemeForSlug(slug: string): string {
-  return DEFAULT_THEMES[slug] ?? '#152651';
+  return DEFAULT_THEMES[slug] ?? '#484AAA';
 }
 
 /** Merge home popular categories with API data (colors + ids from admin). */

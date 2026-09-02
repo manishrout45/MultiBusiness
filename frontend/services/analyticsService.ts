@@ -31,8 +31,20 @@ export interface AdminAnalytics {
   totalVendors: number;
   totalCustomers: number;
   totalOrders: number;
+  totalProducts: number;
+  totalReviews: number;
+  pendingProducts: number;
   platformRevenue: number;
   commissionEarnings: number;
+  topCategories: Array<{ name: string; businessCount: number }>;
+  topVendors: Array<{ id: string; name: string; orderCount: number; revenue: number }>;
+  topProducts: Array<{
+    id: string;
+    name: string;
+    businessName: string;
+    unitsSold: number;
+    revenue: number;
+  }>;
 }
 
 function lastNDays(n: number, baseValues: number[]): ChartPoint[] {
@@ -71,8 +83,24 @@ const MOCK_ADMIN_ANALYTICS: AdminAnalytics = {
   totalVendors: 186,
   totalCustomers: 980,
   totalOrders: 8930,
+  totalProducts: 4520,
+  totalReviews: 420,
+  pendingProducts: 18,
   platformRevenue: 4250000,
   commissionEarnings: 425000,
+  topCategories: [
+    { name: 'Retail', businessCount: 42 },
+    { name: 'Electronics', businessCount: 28 },
+    { name: 'Food', businessCount: 21 },
+  ],
+  topVendors: [
+    { id: '1', name: 'Green Grocery Mart', orderCount: 120, revenue: 240000 },
+    { id: '2', name: 'TechFix Hub', orderCount: 88, revenue: 198000 },
+  ],
+  topProducts: [
+    { id: '1', name: 'Wireless Earbuds', businessName: 'TechFix Hub', unitsSold: 120, revenue: 96000 },
+    { id: '2', name: 'Organic Rice 5kg', businessName: 'Green Grocery Mart', unitsSold: 95, revenue: 47500 },
+  ],
 };
 
 export const analyticsService = {
@@ -119,24 +147,57 @@ export const analyticsService = {
   async getAdminAnalytics(token?: string | null): Promise<AdminAnalytics> {
     if (token) {
       try {
-        const [salesRes, revenueRes] = await Promise.all([
-          apiRequest<{ data: unknown }>('/admin/reports/sales', { token }).catch(() => null),
-          apiRequest<{ data: unknown }>('/admin/reports/revenue', { token }).catch(() => null),
-        ]);
-        if (salesRes || revenueRes) {
-          // Reports shape varies — enrich mock with live dashboard totals when available
-          const dash = await apiRequest<{
-            data: { orders: number; revenue: number; commissions: number; users: number; businesses: { approved: number } };
-          }>('/admin/dashboard', { token });
-          return {
-            ...MOCK_ADMIN_ANALYTICS,
-            totalOrders: dash.data.orders,
-            platformRevenue: dash.data.revenue,
-            commissionEarnings: dash.data.commissions,
-            totalCustomers: Math.max(0, dash.data.users - (dash.data.businesses.approved || 0)),
-            totalVendors: dash.data.businesses.approved || 0,
+        const res = await apiRequest<{
+          data: {
+            userGrowth: Array<{ label: string; value: number }>;
+            vendorGrowth: Array<{ label: string; value: number }>;
+            orderSeries: Array<{ label: string; value: number }>;
+            revenueSeries: Array<{ label: string; value: number }>;
+            commissionSeries: Array<{ label: string; value: number }>;
+            topCategories: Array<{ name: string; businessCount: number }>;
+            topVendors: Array<{ id: string; name: string; orderCount: number; revenue: number }>;
+            topProducts: Array<{
+              id: string;
+              name: string;
+              businessName: string;
+              unitsSold: number;
+              revenue: number;
+            }>;
+            totals: {
+              customers: number;
+              vendors: number;
+              orders: number;
+              revenue: number;
+              commissions: number;
+              products: number;
+              reviews: number;
+            };
           };
-        }
+        }>('/admin/analytics', { token });
+
+        const dash = await apiRequest<{
+          data: { pendingProducts?: number };
+        }>('/admin/dashboard', { token }).catch(() => null);
+
+        const d = res.data;
+        return {
+          userGrowth: d.userGrowth || [],
+          vendorGrowth: d.vendorGrowth || [],
+          orderSeries: d.orderSeries || [],
+          revenueSeries: d.revenueSeries || [],
+          commissionSeries: d.commissionSeries || [],
+          topCategories: d.topCategories || [],
+          topVendors: d.topVendors || [],
+          topProducts: d.topProducts || [],
+          totalCustomers: d.totals?.customers ?? 0,
+          totalVendors: d.totals?.vendors ?? 0,
+          totalOrders: d.totals?.orders ?? 0,
+          totalProducts: d.totals?.products ?? 0,
+          totalReviews: d.totals?.reviews ?? 0,
+          pendingProducts: dash?.data?.pendingProducts ?? 0,
+          platformRevenue: d.totals?.revenue ?? 0,
+          commissionEarnings: d.totals?.commissions ?? 0,
+        };
       } catch {
         // fall through
       }

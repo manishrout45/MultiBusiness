@@ -1,75 +1,135 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { LayoutGrid } from 'lucide-react';
 import { CategoryIconTile } from '@/components/category/CategoryThemeScope';
 import type { DisplayCategory } from '@/lib/displayCategories';
 import { cn } from '@/lib/utils';
 
+/** Approx width of one desktop category column. */
+const DESKTOP_ITEM_WIDTH = 96;
+const MOBILE_MAX = 8;
+
 interface PopularCategoriesGridProps {
   categories: DisplayCategory[];
-  selectedSlug: string | null;
-  onSelect: (category: DisplayCategory | null) => void;
   className?: string;
 }
 
-export function PopularCategoriesGrid({
-  categories,
-  selectedSlug,
-  onSelect,
-  className,
-}: PopularCategoriesGridProps) {
+export function PopularCategoriesGrid({ categories, className }: PopularCategoriesGridProps) {
+  const desktopRowRef = useRef<HTMLDivElement>(null);
+  const [desktopVisible, setDesktopVisible] = useState(8);
+
+  useEffect(() => {
+    const el = desktopRowRef.current;
+    if (!el) return;
+
+    function measure() {
+      const width = el?.clientWidth ?? 0;
+      const slots = Math.max(4, Math.floor(width / DESKTOP_ITEM_WIDTH));
+      const cats = Math.max(3, slots - 1);
+      setDesktopVisible(Math.min(cats, categories.length));
+    }
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [categories.length]);
+
+  const mobileCats = categories.slice(0, MOBILE_MAX);
+  const desktopCats = categories.slice(0, desktopVisible);
+  const desktopHasMore = categories.length > desktopVisible;
+
   return (
     <section className={cn('border-b border-border/40 bg-card', className)}>
-      <div className="container py-8 sm:py-10">
-        <div className="mb-6 flex items-start justify-between gap-4 sm:mb-8">
-          <div>
-            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              — Explore
-            </p>
-            <h2 className="text-2xl font-bold tracking-tight text-dark sm:text-[1.75rem]">
-              Popular Categories
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Discover businesses, shops and services near you
-            </p>
+      <div className="container py-3 sm:py-4 md:py-5">
+        {/* Mobile: scroll up to 8 categories, Show all fixed on the right */}
+        <div className="flex items-start gap-2.5 md:hidden">
+          <div className="min-w-0 flex-1 overflow-x-auto hide-scrollbar">
+            <div className="flex w-max gap-2.5">
+              {mobileCats.map((cat) => {
+                const Icon = cat.icon;
+                return (
+                  <Link
+                    key={cat.slug}
+                    href={`/categories/${cat.slug}`}
+                    className="group flex w-[3.85rem] shrink-0 flex-col items-center gap-1 text-center outline-none"
+                    title={cat.name}
+                  >
+                    <CategoryIconTile
+                      themeColor={cat.themeColor}
+                      active={false}
+                      size="sm"
+                      className="size-10 rounded-lg"
+                    >
+                      <Icon className="size-3.5" strokeWidth={1.75} />
+                    </CategoryIconTile>
+                    <span className="line-clamp-2 text-[9px] font-medium leading-tight text-foreground group-hover:text-primary">
+                      {cat.name}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
+
           <Link
             href="/categories"
-            className="mt-1 shrink-0 text-sm font-semibold text-primary hover:underline"
+            className="group flex w-[3.85rem] shrink-0 flex-col items-center gap-1 text-center outline-none"
           >
-            View all →
+            <span className="flex size-10 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+              <LayoutGrid className="size-3.5" />
+            </span>
+            <span className="line-clamp-2 text-[9px] font-semibold leading-tight text-primary">
+              Show all
+            </span>
           </Link>
         </div>
 
-        <div className="grid grid-cols-3 gap-x-2 gap-y-5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12">
-          {categories.map((cat) => {
+        {/* Desktop / tablet: auto-fit centered row */}
+        <div
+          ref={desktopRowRef}
+          className="hidden w-full items-start justify-evenly gap-2 md:flex"
+        >
+          {desktopCats.map((cat) => {
             const Icon = cat.icon;
-            const active = selectedSlug === cat.slug;
             return (
-              <div key={cat.slug} className="group flex flex-col items-center gap-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => onSelect(active ? null : cat)}
-                  className="outline-none"
-                  title={cat.name}
+              <Link
+                key={cat.slug}
+                href={`/categories/${cat.slug}`}
+                className="group flex min-w-0 flex-1 basis-0 flex-col items-center gap-2 text-center outline-none"
+                title={cat.name}
+              >
+                <CategoryIconTile
+                  themeColor={cat.themeColor}
+                  active={false}
+                  className="transition group-hover:scale-105"
                 >
-                  <CategoryIconTile themeColor={cat.themeColor} active={active}>
-                    <Icon className="size-5 sm:size-[1.35rem]" strokeWidth={1.75} />
-                  </CategoryIconTile>
-                </button>
-                <Link
-                  href={`/categories/${cat.slug}`}
-                  className={cn(
-                    'line-clamp-2 max-w-[5.5rem] text-[11px] font-medium leading-tight transition hover:underline sm:max-w-[6.5rem] sm:text-xs',
-                    active ? 'text-primary' : 'text-foreground group-hover:text-primary'
-                  )}
-                  style={active ? { color: cat.themeColor } : undefined}
-                >
+                  <Icon className="size-5" strokeWidth={1.75} />
+                </CategoryIconTile>
+                <span className="line-clamp-2 max-w-[5.5rem] text-xs font-medium leading-tight text-foreground group-hover:text-primary group-hover:underline">
                   {cat.name}
-                </Link>
-              </div>
+                </span>
+              </Link>
             );
           })}
+
+          <Link
+            href="/categories"
+            className="group flex min-w-0 flex-1 basis-0 flex-col items-center gap-2 text-center outline-none"
+          >
+            <span className="flex size-[3.25rem] items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary transition group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground sm:size-14">
+              <LayoutGrid className="size-5" />
+            </span>
+            <span className="line-clamp-2 max-w-[5.5rem] text-xs font-semibold leading-tight text-primary">
+              {desktopHasMore ? 'Show all' : 'All'}
+            </span>
+          </Link>
         </div>
       </div>
     </section>

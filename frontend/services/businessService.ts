@@ -25,10 +25,13 @@ interface ApiProductsEnvelope {
 }
 
 function fallbackList(params: BusinessSearchParams): BusinessListResponse {
-  const { query = '', category, city, featured, page = 1, limit = 12 } = params;
+  const { query = '', category, city, minRating, featured, page = 1, limit = 12 } = params;
   let data = filterBusinesses(FEATURED_BUSINESSES, query, category);
   if (city) {
-    data = data.filter((b) => b.city.toLowerCase() === city.toLowerCase());
+    data = data.filter((b) => b.city.toLowerCase().includes(city.toLowerCase()));
+  }
+  if (minRating != null) {
+    data = data.filter((b) => (b.rating || 0) >= minRating);
   }
   if (featured !== undefined) {
     data = data.filter((b) => b.featured === featured);
@@ -46,7 +49,8 @@ function fallbackList(params: BusinessSearchParams): BusinessListResponse {
 export async function fetchBusinesses(
   params: BusinessSearchParams = {}
 ): Promise<BusinessListResponse> {
-  const { query = '', categoryId, city, featured, page = 1, limit = 12 } = params;
+  const { query = '', category, categoryId, city, minRating, featured, page = 1, limit = 12 } =
+    params;
   const offset = (page - 1) * limit;
 
   try {
@@ -54,7 +58,13 @@ export async function fetchBusinesses(
       const featuredRes = await apiRequest<ApiListEnvelope>('/featured', {
         next: { revalidate: 60 },
       });
-      const mapped = (featuredRes.data || []).map(mapApiBusiness);
+      let mapped = (featuredRes.data || []).map(mapApiBusiness);
+      if (minRating != null) {
+        mapped = mapped.filter((b) => (b.rating || 0) >= minRating);
+      }
+      if (city) {
+        mapped = mapped.filter((b) => b.city.toLowerCase().includes(city.toLowerCase()));
+      }
       return {
         data: mapped.slice(0, limit),
         total: mapped.length,
@@ -67,7 +77,9 @@ export async function fetchBusinesses(
     const searchParams = new URLSearchParams();
     if (query) searchParams.set('q', query);
     if (categoryId) searchParams.set('categoryId', String(categoryId));
+    else if (category) searchParams.set('category', category);
     if (city) searchParams.set('city', city);
+    if (minRating != null) searchParams.set('minRating', String(minRating));
     searchParams.set('limit', String(limit));
     searchParams.set('offset', String(offset));
 

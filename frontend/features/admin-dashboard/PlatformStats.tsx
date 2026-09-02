@@ -1,10 +1,12 @@
 'use client';
 
 import {
+  FolderTree,
   IndianRupee,
   Package,
   Percent,
   ShoppingBag,
+  Star,
   Store,
   Users,
 } from 'lucide-react';
@@ -18,7 +20,7 @@ interface PlatformStatsProps {
 
 export function PlatformStats({ stats, isLoading }: PlatformStatsProps) {
   return (
-    <div className="grid gap-4 min-[375px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+    <div className="grid gap-4 min-[375px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       <AnalyticsCard
         title="Total vendors"
         value={String(stats?.vendors ?? 0)}
@@ -53,6 +55,18 @@ export function PlatformStats({ stats, isLoading }: PlatformStatsProps) {
         title="Commission earnings"
         value={`₹${(stats?.commissions ?? 0).toLocaleString()}`}
         icon={Percent}
+        isLoading={isLoading}
+      />
+      <AnalyticsCard
+        title="Reviews"
+        value={String(stats?.reviews ?? 0)}
+        icon={Star}
+        isLoading={isLoading}
+      />
+      <AnalyticsCard
+        title="Categories"
+        value={String(stats?.categories ?? 0)}
+        icon={FolderTree}
         isLoading={isLoading}
       />
     </div>

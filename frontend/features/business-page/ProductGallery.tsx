@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,18 +56,22 @@ export function ProductGallery({ products, vendorId, vendorName }: ProductGaller
                 layout
                 className="overflow-hidden rounded-xl border bg-card"
               >
-                <div className="relative aspect-[4/3] bg-muted">
-                  {(product.images[0] || placeholderImage) && (
+                <Link href={`/products/${product.id}`} className="block">
+                  <div className="relative aspect-[4/3] bg-muted">
                     <Image
                       src={product.images[0] || placeholderImage}
                       alt={product.name}
                       fill
                       className="object-cover"
                     />
-                  )}
-                </div>
+                  </div>
+                </Link>
                 <div className="space-y-2 p-3">
-                  <h3 className="font-medium leading-tight">{product.name}</h3>
+                  <h3 className="font-medium leading-tight">
+                    <Link href={`/products/${product.id}`} className="hover:text-primary hover:underline">
+                      {product.name}
+                    </Link>
+                  </h3>
                   <p className="line-clamp-2 text-xs text-muted-foreground">{product.description}</p>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-primary">

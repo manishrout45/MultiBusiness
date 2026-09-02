@@ -1,17 +1,21 @@
 /**
  * Central design tokens — change these values (and matching CSS vars in globals.css)
  * to retheme the entire application. Prefer Tailwind classes: bg-primary, text-success, etc.
+ *
+ * Brand gradient: primary → secondary
+ * Light surfaces: light
  */
 export const colors = {
-  /** Brand / primary actions — sync with --primary in globals.css (#152651) */
-  primary: '#152651',
-  /** Soft accent surfaces — sync with --secondary */
-  secondary: '#EEF2F7',
+  /** Brand / primary actions — #484AAA */
+  primary: '#484AAA',
+  /** Gradient end / accent — #9791F1 */
+  secondary: '#9791F1',
   success: '#0B8F55',
   danger: '#DC2626',
   warning: '#D97706',
   info: '#2563EB',
-  light: '#F8FAFC',
+  /** Soft surfaces — #F7EBF9 */
+  light: '#F7EBF9',
   dark: '#0F172A',
 } as const;
 

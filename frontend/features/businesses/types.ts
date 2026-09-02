@@ -57,6 +57,7 @@ export interface BusinessSearchParams {
   category?: string;
   categoryId?: string | number;
   city?: string;
+  minRating?: number;
   featured?: boolean;
   page?: number;
   limit?: number;

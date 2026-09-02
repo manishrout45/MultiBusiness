@@ -125,7 +125,11 @@ export function ProductCard({
         </button>
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3.5">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug">{product.name}</h3>
+        <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
+          <Link href={`/products/${product.id}`} className="hover:text-primary hover:underline">
+            {product.name}
+          </Link>
+        </h3>
         <Link href={storeHref} className="text-[11px] text-muted-foreground hover:text-primary">
           {vendorName}
         </Link>

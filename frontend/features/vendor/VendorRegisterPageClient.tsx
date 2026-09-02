@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2, Store, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,11 +16,11 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/features/auth';
 import { registerVendor } from '@/services/vendorService';
-import { MARKETPLACE_CATEGORIES } from '@/lib/constants';
+import { listCategories, type CategoryDto } from '@/services/categoryService';
+import { consumeVendorRegisterDraft } from '@/lib/vendorRegister';
 import { ApiError } from '@/lib/api';
 
 export function VendorRegisterPageClient() {
-  const router = useRouter();
   const { isAuthenticated, user, register: registerUser, refreshProfile } = useAuth();
 
   const [ownerName, setOwnerName] = useState(user?.name ?? '');
@@ -29,7 +28,9 @@ export function VendorRegisterPageClient() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
-  const [categorySlug, setCategorySlug] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
@@ -41,10 +42,38 @@ export function VendorRegisterPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  const category = MARKETPLACE_CATEGORIES.find((c) => c.slug === categorySlug);
+  useEffect(() => {
+    let cancelled = false;
+    listCategories()
+      .then((rows) => {
+        if (!cancelled) setCategories(rows);
+      })
+      .finally(() => {
+        if (!cancelled) setCategoriesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) return;
+    const draft = consumeVendorRegisterDraft();
+    if (!draft) return;
+    setOwnerName(draft.name);
+    setEmail(draft.email);
+    setPhone(draft.phone ?? '');
+    setPassword(draft.password);
+  }, [isAuthenticated]);
+
+  const selectedCategory = categories.find((c) => c.id === categoryId);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!categoryId) {
+      setError('Please select a business category.');
+      return;
+    }
     setError(null);
     setPending(true);
 
@@ -62,8 +91,8 @@ export function VendorRegisterPageClient() {
       await registerVendor({
         ownerName: ownerName.trim(),
         businessName: businessName.trim(),
-        businessType: category?.name ?? categorySlug,
-        categoryId: category?.id,
+        businessType: selectedCategory?.name ?? 'General',
+        categoryId: selectedCategory?.id,
         description: description.trim(),
         address: address.trim(),
         city: city.trim(),
@@ -178,13 +207,26 @@ export function VendorRegisterPageClient() {
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
-              <Select required value={categorySlug} onValueChange={setCategorySlug}>
+              <Select
+                required
+                value={categoryId}
+                onValueChange={setCategoryId}
+                disabled={categoriesLoading || categories.length === 0}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue
+                    placeholder={
+                      categoriesLoading
+                        ? 'Loading categories…'
+                        : categories.length === 0
+                          ? 'No categories available'
+                          : 'Select category'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {MARKETPLACE_CATEGORIES.map((c) => (
-                    <SelectItem key={c.slug} value={c.slug}>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>
                   ))}

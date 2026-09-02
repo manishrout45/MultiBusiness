@@ -30,7 +30,7 @@ export function OrderMonitoring() {
           business_name: string;
           customer_name: string;
         }>;
-      }>('/manager/orders', { token });
+      }>('/admin/orders', { token });
       setOrders(
         (res.data || []).map((o) => ({
           id: String(o.id),
@@ -125,7 +125,7 @@ export function ReviewModeration() {
           comment?: string;
           status: string;
         }>;
-      }>('/manager/reviews?status=pending', { token });
+      }>('/admin/reviews?status=pending', { token });
       setReviews(
         (res.data || []).map((r) => ({
           id: String(r.id),
@@ -150,7 +150,7 @@ export function ReviewModeration() {
   async function moderate(id: string, status: 'approved' | 'rejected') {
     setBusyId(id);
     try {
-      await apiRequest(`/manager/reviews/${id}/moderate`, {
+      await apiRequest(`/admin/reviews/${id}/moderate`, {
         method: 'PATCH',
         token,
         body: { status },

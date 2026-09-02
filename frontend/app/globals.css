@@ -5,21 +5,19 @@
 @layer base {
   :root {
     /*
-     * Theme tokens — change these few values to retheme the app.
-     * Mirror hex values in lib/theme.ts for JS consumers.
-     * primary #152651 · secondary #EEF2F7 · success #0B8F55 · danger #DC2626
-     * warning #D97706 · info #2563EB · light #F8FAFC · dark #0F172A
+     * Theme tokens — change these few values (or via Admin → Theme) to retheme the app.
+     * primary #484AAA · secondary #9791F1 · light #F7EBF9
      */
     --background: 0 0% 100%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-    /* Navy #152651 */
-    --primary: 224 59% 20%;
+    /* #484AAA */
+    --primary: 239 41% 47%;
     --primary-foreground: 0 0% 100%;
-    /* Soft blue-gray */
-    --secondary: 216 33% 95%;
-    --secondary-foreground: 224 59% 20%;
+    /* #9791F1 */
+    --secondary: 244 77% 76%;
+    --secondary-foreground: 239 41% 47%;
     --success: 153 86% 30%;
     --success-foreground: 0 0% 100%;
     --danger: 0 72% 51%;
@@ -28,17 +26,21 @@
     --warning-foreground: 0 0% 100%;
     --info: 217 91% 53%;
     --info-foreground: 0 0% 100%;
-    --light: 210 40% 98%;
-    --light-foreground: 222 47% 11%;
+    /* #F7EBF9 */
+    --light: 292 53% 95%;
+    --light-foreground: 239 41% 47%;
     --dark: 222 47% 11%;
     --dark-foreground: 0 0% 100%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 215 14% 42%;
-    --accent: 216 33% 95%;
-    --accent-foreground: 224 59% 20%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 224 59% 20%;
+    --muted: 292 33% 96%;
+    --muted-foreground: 239 20% 38%;
+    --accent: 292 53% 95%;
+    --accent-foreground: 239 41% 47%;
+    --border: 244 30% 90%;
+    --input: 244 30% 90%;
+    --ring: 239 41% 47%;
+    --brand-from: #484aaa;
+    --brand-to: #9791f1;
+    --brand-light: #f7ebf9;
     --radius: 0.75rem;
     --offer: 24 95% 53%;
     --services: 262 55% 52%;
@@ -98,13 +100,17 @@
   .marketplace-shadow {
     box-shadow:
       0 1px 2px rgb(15 23 42 / 0.04),
-      0 8px 24px -6px rgb(21 38 81 / 0.1);
+      0 8px 24px -6px rgb(72 74 170 / 0.14);
   }
 
   .marketplace-shadow-lg {
     box-shadow:
       0 2px 4px rgb(15 23 42 / 0.04),
-      0 18px 48px -12px rgb(21 38 81 / 0.16);
+      0 18px 48px -12px rgb(72 74 170 / 0.18);
+  }
+
+  .bg-brand-gradient {
+    background-image: linear-gradient(135deg, var(--brand-from) 0%, var(--brand-to) 100%);
   }
 
   /* Per-category theme scope (set via CategoryThemeScope inline vars) */
@@ -128,5 +134,158 @@
 
   .category-themed .border-primary {
     border-color: hsl(var(--category-theme));
+  }
+}
+
+/* Festive overlays */
+.festive-overlay span {
+  position: absolute;
+  top: -12%;
+  display: block;
+  pointer-events: none;
+}
+
+.festive-diwali-glow {
+  position: absolute;
+  inset: auto 0 0;
+  height: 28%;
+  background: radial-gradient(ellipse at bottom, rgb(245 158 11 / 0.22), transparent 70%);
+}
+
+.festive-spark {
+  border-radius: 9999px;
+  background: radial-gradient(circle, #fbbf24, #f59e0b);
+  box-shadow: 0 0 8px #f59e0b;
+  animation: festive-fall linear infinite;
+}
+
+.festive-diya {
+  border-radius: 50% 50% 40% 40%;
+  background: linear-gradient(#fbbf24, #ea580c);
+  box-shadow: 0 0 10px #f59e0b;
+  animation: festive-float ease-in-out infinite;
+}
+
+.festive-confetti {
+  border-radius: 2px;
+  animation: festive-fall linear infinite;
+}
+
+.festive-confetti--newyear:nth-child(3n) {
+  background: #fbbf24;
+}
+.festive-confetti--newyear:nth-child(3n + 1) {
+  background: var(--brand-from);
+}
+.festive-confetti--newyear:nth-child(3n + 2) {
+  background: var(--brand-to);
+}
+
+.festive-confetti--independence:nth-child(3n) {
+  background: #f97316;
+}
+.festive-confetti--independence:nth-child(3n + 1) {
+  background: #16a34a;
+}
+.festive-confetti--independence:nth-child(3n + 2) {
+  background: #ffffff;
+  border: 1px solid rgb(15 23 42 / 0.08);
+}
+
+.festive-holi {
+  border-radius: 9999px;
+  opacity: 0.7;
+  animation: festive-fall linear infinite;
+}
+.festive-holi:nth-child(5n) {
+  background: #ef4444;
+}
+.festive-holi:nth-child(5n + 1) {
+  background: #f59e0b;
+}
+.festive-holi:nth-child(5n + 2) {
+  background: #22c55e;
+}
+.festive-holi:nth-child(5n + 3) {
+  background: #3b82f6;
+}
+.festive-holi:nth-child(5n + 4) {
+  background: #a855f7;
+}
+
+.festive-snow {
+  border-radius: 9999px;
+  background: white;
+  box-shadow: 0 0 6px rgb(255 255 255 / 0.8);
+  animation: festive-fall linear infinite;
+}
+
+.festive-star {
+  background: #fbbf24;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  animation: festive-twinkle ease-in-out infinite;
+}
+
+.festive-moon {
+  position: absolute;
+  top: 8%;
+  right: 8%;
+  width: 42px;
+  height: 42px;
+  border-radius: 9999px;
+  box-shadow: inset -10px 0 0 0 #fbbf24;
+  opacity: 0.55;
+  animation: festive-twinkle 4s ease-in-out infinite;
+}
+
+.festive-heart {
+  color: #e11d48;
+  animation: festive-float ease-in-out infinite;
+  line-height: 1;
+}
+
+@keyframes festive-fall {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(12px, 110vh, 0) rotate(220deg);
+    opacity: 0;
+  }
+}
+
+@keyframes festive-float {
+  0% {
+    transform: translate3d(0, 90vh, 0) scale(0.8);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate3d(18px, -10vh, 0) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes festive-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .festive-overlay {
+    display: none;
   }
 }

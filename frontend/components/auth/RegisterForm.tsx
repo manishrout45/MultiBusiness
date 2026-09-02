@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/features/auth';
 import { APP_NAME } from '@/lib/constants';
+import { saveVendorRegisterDraft } from '@/lib/vendorRegister';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -28,15 +29,27 @@ export function RegisterForm({ className }: { className?: string }) {
     event.preventDefault();
     setError(null);
     setPending(true);
+
     try {
+      if (role === 'vendor') {
+        saveVendorRegisterDraft({
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          password,
+        });
+        router.push('/vendor/register');
+        return;
+      }
+
       await register({
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim() || undefined,
         password,
-        role,
+        role: 'customer',
       });
-      router.push(role === 'vendor' ? '/vendor' : '/');
+      router.push('/');
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to create account');
@@ -48,6 +61,44 @@ export function RegisterForm({ className }: { className?: string }) {
   return (
     <div className={cn('space-y-5', className)}>
       <form onSubmit={onSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              { value: 'customer', label: 'Customer', hint: 'Shop local businesses' },
+              { value: 'vendor', label: 'Vendor', hint: 'Sell on LocalMart' },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setRole(option.value)}
+              className={cn(
+                'flex h-auto min-h-11 flex-col items-center justify-center rounded-xl border px-2 py-2 text-sm font-medium transition-colors',
+                role === option.value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50'
+              )}
+            >
+              <span>{option.label}</span>
+              <span
+                className={cn(
+                  'mt-0.5 text-[10px] font-normal',
+                  role === option.value ? 'text-primary-foreground/80' : 'text-neutral-400'
+                )}
+              >
+                {option.hint}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {role === 'vendor' && (
+          <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-neutral-600">
+            Next step: complete the <strong>Become a Seller</strong> form with your business
+            details.
+          </p>
+        )}
+
         <Input
           id="name"
           required
@@ -90,29 +141,6 @@ export function RegisterForm({ className }: { className?: string }) {
           className="h-12 rounded-xl border-neutral-300 bg-white text-base shadow-none focus-visible:ring-neutral-900"
         />
 
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              { value: 'customer', label: 'Customer' },
-              { value: 'vendor', label: 'Vendor' },
-            ] as const
-          ).map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setRole(option.value)}
-              className={cn(
-                'h-11 rounded-xl border text-sm font-medium transition-colors',
-                role === option.value
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50'
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
         {error && (
           <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
@@ -127,10 +155,12 @@ export function RegisterForm({ className }: { className?: string }) {
           {pending ? (
             <>
               <Loader2 className="animate-spin" />
-              Creating account…
+              {role === 'vendor' ? 'Opening seller form…' : 'Creating account…'}
             </>
+          ) : role === 'vendor' ? (
+            'Continue to Become a Seller'
           ) : (
-            'Continue with email'
+            'Create customer account'
           )}
         </Button>
       </form>

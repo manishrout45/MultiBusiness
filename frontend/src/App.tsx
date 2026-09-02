@@ -5,6 +5,8 @@ import { MarketplaceNavbar, MobileBottomNav } from '@/components/navbar';
 import { ToastProvider } from '@/components/ui/toast';
 import { AuthProvider } from '@/features/auth';
 import { CartProvider } from '@/features/cart';
+import { PlatformThemeProvider } from '@/hooks/usePlatformTheme';
+import { FestiveOverlay } from '@/components/theme/FestiveOverlay';
 import AdminLayout from '@/app/admin/layout';
 import AdminDashboardPage from '@/app/admin/dashboard/page';
 import HomePage from '@/app/page';
@@ -14,6 +16,7 @@ import SearchPage from '@/app/search/page';
 import CategoriesPage from '@/app/categories/page';
 import CategoryDetailPage from '@/app/categories/CategoryDetailPage';
 import ProductsPage from '@/app/products/page';
+import ProductDetailPage from '@/app/products/ProductDetailPage';
 import BusinessesPage from '@/app/businesses/page';
 import BusinessPage from '@/app/business/BusinessPage';
 import BusinessReviewsPage from '@/app/business/BusinessReviewsPage';
@@ -46,15 +49,18 @@ function AppShell() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <CartProvider>
-          <ScrollToTop />
-          <MarketplaceNavbar />
-          <main className="pb-16 md:pb-0">
-            <Outlet />
-          </main>
-          <Footer />
-          <MobileBottomNav />
-        </CartProvider>
+        <PlatformThemeProvider>
+          <CartProvider>
+            <ScrollToTop />
+            <FestiveOverlay />
+            <MarketplaceNavbar />
+            <main className="pb-16 md:pb-0">
+              <Outlet />
+            </main>
+            <Footer />
+            <MobileBottomNav />
+          </CartProvider>
+        </PlatformThemeProvider>
       </ToastProvider>
     </AuthProvider>
   );
@@ -78,6 +84,7 @@ export default function App() {
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/categories/:slug" element={<CategoryDetailPage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/businesses" element={<BusinessesPage />} />
           <Route path="/businesses/:slug" element={<LegacyBusinessRedirect />} />
           <Route path="/business/:slug" element={<BusinessPage />} />

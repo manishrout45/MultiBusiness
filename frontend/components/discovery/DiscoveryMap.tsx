@@ -175,17 +175,22 @@ export function DiscoveryMap({
   const hasUser = userLat != null && userLng != null;
 
   return (
-    <div className={cn('relative overflow-hidden rounded-2xl border border-border bg-muted', className)}>
-      <div ref={containerRef} className="h-full min-h-[280px] w-full z-0" />
+    <div
+      className={cn(
+        'relative z-0 isolate overflow-hidden rounded-2xl border border-border bg-muted',
+        className
+      )}
+    >
+      <div ref={containerRef} className="relative z-0 h-full min-h-[280px] w-full" />
       {!hasUser ? (
-        <div className="pointer-events-none absolute inset-0 z-[400] flex items-center justify-center bg-card/70 backdrop-blur-[2px]">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-card/70 backdrop-blur-[2px]">
           <p className="max-w-xs px-4 text-center text-sm font-medium text-muted-foreground">
             Enable or select a location to see nearby businesses on the map
           </p>
         </div>
       ) : null}
       {hasUser ? (
-        <div className="absolute bottom-3 left-3 z-[400] rounded-lg border border-border bg-card/95 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm backdrop-blur">
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10 max-w-[calc(100%-1.5rem)] rounded-lg border border-border bg-card/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur sm:text-xs">
           {radiusKm} km search radius · {mappable.length} on map
         </div>
       ) : null}

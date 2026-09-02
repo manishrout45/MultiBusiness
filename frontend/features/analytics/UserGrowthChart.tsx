@@ -9,12 +9,14 @@ interface UserGrowthChartProps {
   title?: string;
   data: ChartPoint[];
   isLoading?: boolean;
+  color?: string;
 }
 
 export function UserGrowthChart({
   title = 'User growth',
   data,
   isLoading,
+  color = 'hsl(var(--primary))',
 }: UserGrowthChartProps) {
   if (isLoading) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
@@ -42,7 +44,7 @@ export function UserGrowthChart({
           <svg viewBox={`0 0 ${w} ${h}`} className="h-44 w-full min-w-[280px]">
             <motion.polyline
               fill="none"
-              stroke="hsl(var(--primary))"
+              stroke={color}
               strokeWidth="2.5"
               points={coords.map((c) => `${c.x},${c.y}`).join(' ')}
               initial={{ opacity: 0 }}
@@ -54,7 +56,7 @@ export function UserGrowthChart({
                 cx={c.x}
                 cy={c.y}
                 r="3.5"
-                fill="hsl(var(--primary))"
+                fill={color}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: i * 0.03 }}
@@ -66,7 +68,7 @@ export function UserGrowthChart({
           <div className="mt-1 flex justify-between text-xs text-muted-foreground">
             <span>{data[0].label}</span>
             <span className="font-medium text-foreground">
-              {data[data.length - 1].value.toLocaleString()} users
+              {data[data.length - 1].value.toLocaleString()}
             </span>
           </div>
         )}

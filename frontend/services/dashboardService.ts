@@ -31,9 +31,15 @@ export interface AdminDashboardStats {
   customers: number;
   vendors: number;
   products: number;
+  pendingProducts: number;
+  publishedProducts: number;
   orders: number;
+  ordersByStatus: Record<string, number>;
   revenue: number;
   commissions: number;
+  reviews: number;
+  pendingReviews: number;
+  categories: number;
   businesses: {
     pending: number;
     recommended: number;
@@ -58,11 +64,66 @@ export interface PendingVendor {
   businessName: string;
   ownerName: string;
   ownerEmail: string;
+  ownerPhone?: string | null;
   categoryName?: string;
   city?: string;
+  address?: string | null;
   status: string;
   createdAt: string;
   documentsVerified?: boolean;
+  productCount?: number;
+  pendingProductCount?: number;
+  publishedProductCount?: number;
+  description?: string | null;
+}
+
+export interface VendorProduct {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  status: string;
+  stock: number;
+}
+
+export interface VendorDetails extends PendingVendor {
+  products: VendorProduct[];
+}
+
+function mapVendorRow(b: {
+  id: number;
+  business_name: string;
+  owner_name: string;
+  owner_email: string;
+  owner_phone?: string;
+  category_name?: string;
+  city?: string;
+  address?: string;
+  description?: string;
+  status: string;
+  created_at: string;
+  is_verified?: number;
+  product_count?: number;
+  pending_product_count?: number;
+  published_product_count?: number;
+}): PendingVendor {
+  return {
+    id: String(b.id),
+    businessName: b.business_name,
+    ownerName: b.owner_name,
+    ownerEmail: b.owner_email,
+    ownerPhone: b.owner_phone,
+    categoryName: b.category_name,
+    city: b.city,
+    address: b.address,
+    description: b.description,
+    status: b.status,
+    createdAt: b.created_at,
+    documentsVerified: Boolean(b.is_verified),
+    productCount: Number(b.product_count ?? 0),
+    pendingProductCount: Number(b.pending_product_count ?? 0),
+    publishedProductCount: Number(b.published_product_count ?? 0),
+  };
 }
 
 export interface AdminCategory {
@@ -122,9 +183,15 @@ const MOCK_ADMIN_STATS: AdminDashboardStats = {
   customers: 980,
   vendors: 186,
   products: 4520,
+  pendingProducts: 18,
+  publishedProducts: 4200,
   orders: 8930,
+  ordersByStatus: { pending: 42, processing: 88, shipped: 120, delivered: 8500, cancelled: 180 },
   revenue: 4250000,
   commissions: 425000,
+  reviews: 420,
+  pendingReviews: 12,
+  categories: 28,
   businesses: {
     pending: 12,
     recommended: 4,
@@ -203,22 +270,36 @@ export const dashboardService = {
         const res = await apiRequest<{
           data: {
             users: number;
+            customers?: number;
+            vendors?: number;
             businesses: AdminDashboardStats['businesses'];
             products: number;
+            pendingProducts?: number;
+            publishedProducts?: number;
             orders: number;
+            ordersByStatus?: Record<string, number>;
             revenue: number;
             commissions: number;
+            reviews?: number;
+            pendingReviews?: number;
+            categories?: number;
           };
         }>('/admin/dashboard', { token });
         const d = res.data;
         return {
           users: d.users,
-          customers: Math.max(0, d.users - (d.businesses.approved || 0)),
-          vendors: d.businesses.approved || 0,
+          customers: d.customers ?? Math.max(0, d.users - (d.businesses.approved || 0)),
+          vendors: d.vendors ?? (d.businesses.approved || 0),
           products: d.products,
+          pendingProducts: d.pendingProducts ?? 0,
+          publishedProducts: d.publishedProducts ?? 0,
           orders: d.orders,
+          ordersByStatus: d.ordersByStatus ?? {},
           revenue: d.revenue,
           commissions: d.commissions,
+          reviews: d.reviews ?? 0,
+          pendingReviews: d.pendingReviews ?? 0,
+          categories: d.categories ?? 0,
           businesses: d.businesses,
         };
       } catch {
@@ -287,24 +368,20 @@ export const dashboardService = {
             business_name: string;
             owner_name: string;
             owner_email: string;
+            owner_phone?: string;
             category_name?: string;
             city?: string;
+            address?: string;
+            description?: string;
             status: string;
             created_at: string;
             is_verified?: number;
+            product_count?: number;
+            pending_product_count?: number;
+            published_product_count?: number;
           }>;
         }>('/admin/businesses/pending', { token });
-        return res.data.map((b) => ({
-          id: String(b.id),
-          businessName: b.business_name,
-          ownerName: b.owner_name,
-          ownerEmail: b.owner_email,
-          categoryName: b.category_name,
-          city: b.city,
-          status: b.status,
-          createdAt: b.created_at,
-          documentsVerified: Boolean(b.is_verified),
-        }));
+        return res.data.map(mapVendorRow);
       } catch {
         // fall through
       }
@@ -320,6 +397,9 @@ export const dashboardService = {
         status: 'pending',
         createdAt: new Date().toISOString(),
         documentsVerified: false,
+        productCount: 0,
+        pendingProductCount: 0,
+        publishedProductCount: 0,
       },
       {
         id: '102',
@@ -331,8 +411,88 @@ export const dashboardService = {
         status: 'recommended',
         createdAt: new Date(Date.now() - 86400000).toISOString(),
         documentsVerified: true,
+        productCount: 3,
+        pendingProductCount: 1,
+        publishedProductCount: 2,
       },
     ];
+  },
+
+  async listAllVendors(token?: string | null, status?: string): Promise<PendingVendor[]> {
+    if (token) {
+      try {
+        const q = status ? `?status=${encodeURIComponent(status)}` : '';
+        const res = await apiRequest<{
+          data: Array<{
+            id: number;
+            business_name: string;
+            owner_name: string;
+            owner_email: string;
+            owner_phone?: string;
+            category_name?: string;
+            city?: string;
+            address?: string;
+            description?: string;
+            status: string;
+            created_at: string;
+            is_verified?: number;
+            product_count?: number;
+            pending_product_count?: number;
+            published_product_count?: number;
+          }>;
+        }>(`/admin/vendors${q}`, { token });
+        return (res.data || []).map(mapVendorRow);
+      } catch {
+        // fall through
+      }
+    }
+    return this.listPendingVendors(token);
+  },
+
+  async getVendorDetails(id: string, token?: string | null): Promise<VendorDetails | null> {
+    if (token) {
+      try {
+        const res = await apiRequest<{
+          data: {
+            id: number;
+            business_name: string;
+            owner_name: string;
+            owner_email: string;
+            owner_phone?: string;
+            category_name?: string;
+            city?: string;
+            address?: string;
+            description?: string;
+            status: string;
+            created_at: string;
+            is_verified?: number;
+            products?: Array<{
+              id: number;
+              name: string;
+              description?: string;
+              price?: number;
+              status: string;
+              stock?: number;
+            }>;
+          };
+        }>(`/admin/vendors/${id}`, { token });
+        const v = mapVendorRow(res.data);
+        return {
+          ...v,
+          products: (res.data.products || []).map((p) => ({
+            id: String(p.id),
+            name: p.name,
+            description: p.description || null,
+            price: Number(p.price ?? 0),
+            status: p.status,
+            stock: Number(p.stock ?? 0),
+          })),
+        };
+      } catch {
+        return null;
+      }
+    }
+    return null;
   },
 
   async approveVendor(id: string, token?: string | null): Promise<void> {
@@ -380,7 +540,7 @@ export const dashboardService = {
           name: c.name,
           slug: c.slug,
           description: c.description,
-          themeColor: c.theme_color ? String(c.theme_color) : '#152651',
+          themeColor: c.theme_color ? String(c.theme_color) : '#484AAA',
           isActive: c.is_active,
           parentId: c.parent_id,
         }));
@@ -389,7 +549,7 @@ export const dashboardService = {
       }
     }
     return [
-      { id: '1', name: 'Retail Store', slug: 'retail-store', description: 'General retail', themeColor: '#152651', isActive: 1 },
+      { id: '1', name: 'Retail Store', slug: 'retail-store', description: 'General retail', themeColor: '#484AAA', isActive: 1 },
       { id: '2', name: 'Electronics', slug: 'electronics', description: 'Gadgets', themeColor: '#2563EB', isActive: 1 },
       { id: '3', name: 'Restaurant', slug: 'restaurant', description: 'Food & dining', themeColor: '#EA580C', isActive: 1 },
     ];
@@ -416,7 +576,7 @@ export const dashboardService = {
         name: res.data.name,
         slug: res.data.slug,
         description: res.data.description,
-        themeColor: res.data.theme_color ?? input.themeColor ?? '#152651',
+        themeColor: res.data.theme_color ?? input.themeColor ?? '#484AAA',
         isActive: 1,
       };
     }
@@ -425,7 +585,7 @@ export const dashboardService = {
       name: input.name,
       slug: input.name.toLowerCase().replace(/\s+/g, '-'),
       description: input.description,
-      themeColor: input.themeColor ?? '#152651',
+      themeColor: input.themeColor ?? '#484AAA',
       isActive: 1,
     };
   },
@@ -451,6 +611,68 @@ export const dashboardService = {
   async deleteCategory(id: string, token?: string | null): Promise<void> {
     if (token) {
       await apiRequest(`/admin/categories/${id}`, { method: 'DELETE', token });
+    }
+  },
+
+  async listAdminProducts(
+    token?: string | null,
+    status?: string
+  ): Promise<
+    Array<{
+      id: string;
+      name: string;
+      businessName: string;
+      price: number;
+      status: string;
+      stock: number;
+    }>
+  > {
+    if (token) {
+      try {
+        const q = status ? `?status=${encodeURIComponent(status)}` : '';
+        const res = await apiRequest<{
+          data: Array<{
+            id: number;
+            name: string;
+            business_name?: string;
+            price?: number;
+            status: string;
+            stock?: number;
+            stock_quantity?: number;
+          }>;
+        }>(`/admin/products${q}`, { token });
+        return (res.data || []).map((p) => ({
+          id: String(p.id),
+          name: p.name,
+          businessName: p.business_name || 'Vendor',
+          price: Number(p.price ?? 0),
+          status: p.status,
+          stock: Number(p.stock ?? p.stock_quantity ?? 0),
+        }));
+      } catch {
+        // fall through
+      }
+    }
+    return [];
+  },
+
+  async updateProductStatus(
+    id: string,
+    status: string,
+    token?: string | null
+  ): Promise<void> {
+    if (token) {
+      await apiRequest(`/admin/products/${id}/status`, {
+        method: 'PATCH',
+        token,
+        body: { status },
+      });
+    }
+  },
+
+  async removeProduct(id: string, token?: string | null): Promise<void> {
+    if (token) {
+      await apiRequest(`/admin/products/${id}`, { method: 'DELETE', token });
     }
   },
 };

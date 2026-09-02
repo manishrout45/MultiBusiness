@@ -5,8 +5,9 @@ import Link from 'next/link';
 import {
   BusinessCardSkeleton,
   DiscoveryMap,
-  DiscoverySearch,
+  DiscoveryMapSearch,
   EmptyState,
+  HomeHeroBanner,
   MarketplaceBusinessCard,
   MarketplaceProductCard,
   MapSkeleton,
@@ -24,7 +25,6 @@ import {
   type DisplayCategory,
 } from '@/lib/displayCategories';
 import { haversineDistanceKm, isValidCoordinate } from '@/lib/geo';
-import { matchesPopularCategory } from '@/lib/popularCategories';
 import {
   DEFAULT_SEARCH_RADIUS_KM,
   PRODUCT_ROTATION_MS,
@@ -43,23 +43,6 @@ function isServiceBusiness(b: Business) {
     hay.includes('plumber') ||
     hay.includes('electric') ||
     hay.includes('beauty')
-  );
-}
-
-function businessMatchesCategory(b: Business, cat: DisplayCategory | null) {
-  if (!cat) return true;
-  if (cat.id && b.categoryId === cat.id) return true;
-  return matchesPopularCategory(
-    `${b.name} ${b.category} ${b.categorySlug} ${b.businessType ?? ''} ${b.description}`,
-    cat
-  );
-}
-
-function productMatchesCategory(p: CatalogProduct, cat: DisplayCategory | null) {
-  if (!cat) return true;
-  return matchesPopularCategory(
-    `${p.name} ${p.category} ${p.categorySlug} ${p.businessName ?? ''} ${p.description}`,
-    cat
   );
 }
 
@@ -158,7 +141,6 @@ export function HomeDiscoveryPage() {
   const [activeQuery, setActiveQuery] = useState('');
   const [radius, setRadius] = useState<SearchRadiusKm>(DEFAULT_SEARCH_RADIUS_KM);
   const [displayCategories, setDisplayCategories] = useState<DisplayCategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<DisplayCategory | null>(null);
   const [businessesRaw, setBusinessesRaw] = useState<Business[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(true);
   const [productsPool, setProductsPool] = useState<CatalogProduct[]>([]);
@@ -191,7 +173,6 @@ export function HomeDiscoveryPage() {
       try {
         const data = await fetchNearbyBusinessPool({
           query: activeQuery || undefined,
-          categoryId: selectedCategory?.id,
           limit: 100,
         });
         if (!cancelled) setBusinessesRaw(data);
@@ -206,7 +187,7 @@ export function HomeDiscoveryPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [activeQuery, selectedCategory?.id]);
+  }, [activeQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -215,7 +196,6 @@ export function HomeDiscoveryPage() {
       try {
         const rows = await searchCatalogProducts({
           q: activeQuery || undefined,
-          categoryId: selectedCategory?.id,
           limit: 48,
           sort: 'newest',
         });
@@ -229,7 +209,7 @@ export function HomeDiscoveryPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeQuery, selectedCategory?.id]);
+  }, [activeQuery]);
 
   useEffect(() => {
     const id = window.setInterval(() => setRotationTick((t) => t + 1), PRODUCT_ROTATION_MS);
@@ -243,7 +223,6 @@ export function HomeDiscoveryPage() {
 
   const nearbyBusinesses = useMemo(() => {
     let list = filterByRadius(businessesWithDistance, radius, hasLocation);
-    list = list.filter((b) => businessMatchesCategory(b, selectedCategory));
     if (minRating != null) {
       list = list.filter((b) => (b.rating || 0) >= minRating);
     }
@@ -257,7 +236,6 @@ export function HomeDiscoveryPage() {
     businessesWithDistance,
     radius,
     hasLocation,
-    selectedCategory,
     minRating,
     resultTab,
     sort,
@@ -265,7 +243,6 @@ export function HomeDiscoveryPage() {
 
   const productsForResults = useMemo(() => {
     let list = productsPool
-      .filter((p) => productMatchesCategory(p, selectedCategory))
       .map((p) => {
         if (
           userLat == null ||
@@ -303,7 +280,7 @@ export function HomeDiscoveryPage() {
       );
     }
     return list;
-  }, [productsPool, selectedCategory, userLat, userLng, hasLocation, radius, minRating, sort]);
+  }, [productsPool, userLat, userLng, hasLocation, radius, minRating, sort]);
 
   useEffect(() => {
     setRotatedProducts(pickRotatedProducts(productsForResults, 8));
@@ -332,30 +309,10 @@ export function HomeDiscoveryPage() {
   const showProductsSection = resultTab === 'all' || resultTab === 'products';
   const showMapSection = resultTab === 'all' || resultTab === 'stores' || resultTab === 'services';
 
-  const categoryThemeStyle = selectedCategory
-    ? { borderColor: `${selectedCategory.themeColor}40` }
-    : undefined;
-
   return (
     <div className="bg-card">
-      <DiscoverySearch
-        query={query}
-        onQueryChange={setQuery}
-        onSearch={runSearch}
-        radius={radius}
-        onRadiusChange={setRadius}
-        location={location}
-        locationStatus={locationStatus}
-        locationError={locationError}
-        onDetectLocation={requestCurrentLocation}
-        onSelectLocation={setManualLocation}
-      />
-
-      <PopularCategoriesGrid
-        categories={displayCategories}
-        selectedSlug={selectedCategory?.slug ?? null}
-        onSelect={setSelectedCategory}
-      />
+      <PopularCategoriesGrid categories={displayCategories} />
+      <HomeHeroBanner />
 
       <div className="container space-y-10 py-8 sm:py-10">
         {activeQuery ? (
@@ -368,22 +325,26 @@ export function HomeDiscoveryPage() {
         ) : null}
 
         {showMapSection ? (
-          <section className="space-y-4" style={categoryThemeStyle}>
+          <section className="space-y-4">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-dark">Discover on Map</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Explore nearby stores within your selected radius
-                {selectedCategory ? (
-                  <>
-                    {' '}
-                    ·{' '}
-                    <span style={{ color: selectedCategory.themeColor }}>
-                      {selectedCategory.name}
-                    </span>
-                  </>
-                ) : null}
+                Search nearby stores and explore them on the map
               </p>
             </div>
+
+            <DiscoveryMapSearch
+              query={query}
+              onQueryChange={setQuery}
+              onSearch={runSearch}
+              radius={radius}
+              onRadiusChange={setRadius}
+              location={location}
+              locationStatus={locationStatus}
+              locationError={locationError}
+              onDetectLocation={requestCurrentLocation}
+              onSelectLocation={setManualLocation}
+            />
 
             <SortFilterBar
               sort={sort}

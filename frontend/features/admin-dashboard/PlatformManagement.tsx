@@ -347,9 +347,18 @@ export function OffersManagement() {
   const { token } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<
-    Array<{ id: string; title: string; status: string; adType: string }>
+    Array<{
+      id: string;
+      title: string;
+      status: string;
+      adType: string;
+      imageUrl?: string;
+      linkUrl?: string;
+    }>
   >([]);
   const [title, setTitle] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -358,7 +367,14 @@ export function OffersManagement() {
     setLoading(true);
     try {
       const res = await apiRequest<{
-        data: Array<{ id: number; title: string; status: string; ad_type: string }>;
+        data: Array<{
+          id: number;
+          title: string;
+          status: string;
+          ad_type: string;
+          image_path?: string;
+          link_url?: string;
+        }>;
       }>('/admin/offers', { token });
       setItems(
         (res.data || []).map((row) => ({
@@ -366,6 +382,8 @@ export function OffersManagement() {
           title: row.title,
           status: row.status,
           adType: row.ad_type,
+          imageUrl: row.image_path || '',
+          linkUrl: row.link_url || '',
         }))
       );
     } catch {
@@ -391,14 +409,18 @@ export function OffersManagement() {
           title: title.trim(),
           adType: 'homepage_banner',
           status: 'active',
+          imagePath: imageUrl.trim() || null,
+          linkUrl: linkUrl.trim() || null,
         },
       });
       setTitle('');
-      toast({ title: 'Offer created', variant: 'success' });
+      setImageUrl('');
+      setLinkUrl('');
+      toast({ title: 'Homepage banner created', variant: 'success' });
       void load();
     } catch (err) {
       toast({
-        title: 'Could not create offer',
+        title: 'Could not create banner',
         description: err instanceof Error ? err.message : 'Try again',
         variant: 'error',
       });
@@ -424,19 +446,40 @@ export function OffersManagement() {
     }
   }
 
+  async function updateBanner(id: string, patch: { imageUrl?: string; linkUrl?: string }) {
+    try {
+      await apiRequest(`/admin/offers/${id}`, {
+        method: 'PATCH',
+        token,
+        body: {
+          imagePath: patch.imageUrl,
+          linkUrl: patch.linkUrl,
+        },
+      });
+      void load();
+      toast({ title: 'Banner updated', variant: 'success' });
+    } catch (err) {
+      toast({
+        title: 'Update failed',
+        description: err instanceof Error ? err.message : 'Try again',
+        variant: 'error',
+      });
+    }
+  }
+
   return (
     <section id="offers" className="scroll-mt-24">
       <Card>
         <CardHeader>
-          <CardTitle>Offers & promotions</CardTitle>
+          <CardTitle>Homepage banners</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Manage homepage promotional banners from admin settings.
+            Manage hero banners shown on the home page. Active homepage banners rotate automatically.
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
-          <form onSubmit={createOffer} className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-end">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="offer-title">Offer title</Label>
+          <form onSubmit={createOffer} className="space-y-3 rounded-xl border p-4">
+            <div className="space-y-2">
+              <Label htmlFor="offer-title">Banner title</Label>
               <Input
                 id="offer-title"
                 value={title}
@@ -445,43 +488,80 @@ export function OffersManagement() {
                 required
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="offer-image">Image URL</Label>
+              <Input
+                id="offer-image"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://example.com/banner.jpg"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="offer-link">Link URL</Label>
+              <Input
+                id="offer-link"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="/categories or /products"
+              />
+            </div>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Create offer'}
+              {saving ? 'Saving…' : 'Add homepage banner'}
             </Button>
           </form>
 
           {loading ? (
             <Skeleton className="h-20 w-full rounded-xl" />
           ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No offers yet.</p>
+            <p className="text-sm text-muted-foreground">No homepage banners yet.</p>
           ) : (
             <div className="space-y-3">
               {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col gap-2 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="font-semibold">{item.title}</p>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {item.adType.replace(/_/g, ' ')} · {item.status}
-                    </p>
+                <div key={item.id} className="space-y-3 rounded-xl border p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-semibold">{item.title}</p>
+                      <p className="text-sm text-muted-foreground capitalize">
+                        {item.adType.replace(/_/g, ' ')} · {item.status}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {item.status !== 'active' && (
+                        <Button size="sm" onClick={() => void setStatus(item.id, 'active')}>
+                          Activate
+                        </Button>
+                      )}
+                      {item.status === 'active' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void setStatus(item.id, 'expired')}
+                        >
+                          Deactivate
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    {item.status !== 'active' && (
-                      <Button size="sm" onClick={() => void setStatus(item.id, 'active')}>
-                        Activate
-                      </Button>
-                    )}
-                    {item.status === 'active' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void setStatus(item.id, 'expired')}
-                      >
-                        End offer
-                      </Button>
-                    )}
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input
+                      defaultValue={item.imageUrl}
+                      placeholder="Image URL"
+                      onBlur={(e) => {
+                        if (e.target.value !== item.imageUrl) {
+                          void updateBanner(item.id, { imageUrl: e.target.value });
+                        }
+                      }}
+                    />
+                    <Input
+                      defaultValue={item.linkUrl}
+                      placeholder="Link URL"
+                      onBlur={(e) => {
+                        if (e.target.value !== item.linkUrl) {
+                          void updateBanner(item.id, { linkUrl: e.target.value });
+                        }
+                      }}
+                    />
                   </div>
                 </div>
               ))}
@@ -494,14 +574,160 @@ export function OffersManagement() {
 }
 
 export function ReportsManagement() {
+  const { token } = useAuth();
+  const [sales, setSales] = useState<
+    Array<{ period: string; orders: number; amount: number; commission: number }>
+  >([]);
+  const [revenue, setRevenue] = useState<{
+    totalRevenue: number;
+    totalCommission: number;
+    orderCount: number;
+    byPeriod: Array<{
+      period: string;
+      total_revenue: number;
+      total_commission: number;
+      order_count: number;
+    }>;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const [salesRes, revenueRes] = await Promise.all([
+        apiRequest<{
+          data: Array<{
+            period: string;
+            order_count: number;
+            total_amount: number;
+            commission_amount: number;
+          }>;
+        }>('/admin/reports/sales?period=day', { token }),
+        apiRequest<{
+          data: {
+            totalRevenue: number;
+            totalCommission: number;
+            orderCount: number;
+            byPeriod: Array<{
+              period: string;
+              total_revenue: number;
+              total_commission: number;
+              order_count: number;
+            }>;
+          };
+        }>('/admin/reports/revenue', { token }),
+      ]);
+      setSales(
+        (salesRes.data || []).slice(-14).map((row) => ({
+          period: String(row.period).slice(0, 10),
+          orders: Number(row.order_count) || 0,
+          amount: Number(row.total_amount) || 0,
+          commission: Number(row.commission_amount) || 0,
+        }))
+      );
+      setRevenue(revenueRes.data);
+    } catch {
+      setSales([]);
+      setRevenue(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   return (
-    <section id="reports" className="scroll-mt-24">
+    <section id="reports" className="scroll-mt-24 space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Reports & moderation</CardTitle>
+          <CardTitle>Sales & revenue reports</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Track platform-wide sales performance and commission earnings from live order data.
+          </p>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No open user reports.</p>
+        <CardContent className="space-y-6">
+          {loading ? (
+            <Skeleton className="h-32 w-full rounded-xl" />
+          ) : (
+            <>
+              <div className="grid gap-3 min-[375px]:grid-cols-3">
+                <div className="rounded-xl border bg-card px-3 py-3">
+                  <p className="text-xs text-muted-foreground">Total revenue</p>
+                  <p className="text-xl font-bold tabular-nums">
+                    ₹{(revenue?.totalRevenue ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-xl border bg-card px-3 py-3">
+                  <p className="text-xs text-muted-foreground">Total commissions</p>
+                  <p className="text-xl font-bold tabular-nums">
+                    ₹{(revenue?.totalCommission ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-xl border bg-card px-3 py-3">
+                  <p className="text-xs text-muted-foreground">Paid / delivered orders</p>
+                  <p className="text-xl font-bold tabular-nums">{revenue?.orderCount ?? 0}</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-3 text-sm font-semibold">Daily sales (recent)</h3>
+                {sales.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No sales data yet.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border">
+                    <table className="w-full min-w-[480px] text-left text-sm">
+                      <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 font-medium">Date</th>
+                          <th className="px-3 py-2 font-medium">Orders</th>
+                          <th className="px-3 py-2 font-medium">Sales</th>
+                          <th className="px-3 py-2 font-medium">Commission</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sales.map((row) => (
+                          <tr key={row.period} className="border-b last:border-0">
+                            <td className="px-3 py-2">{row.period}</td>
+                            <td className="px-3 py-2 tabular-nums">{row.orders}</td>
+                            <td className="px-3 py-2 tabular-nums">₹{row.amount.toLocaleString()}</td>
+                            <td className="px-3 py-2 tabular-nums">
+                              ₹{row.commission.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="mb-3 text-sm font-semibold">Monthly revenue</h3>
+                {!revenue?.byPeriod?.length ? (
+                  <p className="text-sm text-muted-foreground">No monthly revenue yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {revenue.byPeriod.map((row) => (
+                      <div
+                        key={row.period}
+                        className="flex flex-col gap-1 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <p className="font-medium">{row.period}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {Number(row.order_count)} orders · ₹
+                          {Number(row.total_revenue).toLocaleString()} · commission ₹
+                          {Number(row.total_commission).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </section>
