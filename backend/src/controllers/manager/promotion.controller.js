@@ -1,4 +1,5 @@
 ﻿const db = require('../../config/db');
+const { notifyUsersByRoles } = require('../../services/notification.service');
 
 const listPromotions = async (req, res, next) => {
   try {
@@ -39,6 +40,16 @@ const createPromotion = async (req, res, next) => {
       [title, description, region, categoryId, startDate, endDate, req.user.id, activeValue]
     );
 
+    if (activeValue === 1) {
+      await notifyUsersByRoles({
+        roles: ['customer', 'vendor'],
+        title: 'New announcement',
+        message: description ? `${title}: ${description}` : title,
+        type: 'announcement',
+        link: '/',
+      });
+    }
+
     const [rows] = await db.query('SELECT * FROM promotions WHERE id = ?', [result.insertId]);
     res.status(201).json({ message: 'Promotion created', data: rows[0] });
   } catch (err) {
@@ -60,11 +71,23 @@ const updatePromotion = async (req, res, next) => {
     const isActive = req.body.is_active ?? req.body.isActive;
     const activeValue =
       isActive === undefined ? existing[0].is_active : isActive === true || isActive === 1 ? 1 : 0;
+    const wasInactive = !existing[0].is_active;
 
     await db.query(
       'UPDATE promotions SET title = ?, description = ?, is_active = ? WHERE id = ?',
       [title, description, activeValue, id]
     );
+
+    if (wasInactive && activeValue === 1) {
+      await notifyUsersByRoles({
+        roles: ['customer', 'vendor'],
+        title: 'New announcement',
+        message: description ? `${title}: ${description}` : title,
+        type: 'announcement',
+        link: '/',
+      });
+    }
+
     const [rows] = await db.query('SELECT * FROM promotions WHERE id = ?', [id]);
     res.json({ message: 'Announcement updated', data: rows[0] });
   } catch (err) {

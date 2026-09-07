@@ -1,20 +1,23 @@
 const crypto = require('crypto');
 
+function isPaymentConfigured() {
+  return Boolean(process.env.PAYMENT_GATEWAY_KEY && process.env.PAYMENT_GATEWAY_SECRET);
+}
+
 const createPaymentOrder = async ({ amount, currency = 'INR', orderId, customer }) => {
-  if (!process.env.PAYMENT_GATEWAY_KEY) {
-    console.log('[Payment stub]', { amount, currency, orderId, customer: customer?.email });
+  if (!isPaymentConfigured()) {
     return {
-      stub: true,
-      provider: 'stub',
-      paymentId: `stub_${orderId}`,
+      configured: false,
+      provider: 'none',
       orderId,
-      amount,
+      amount: Number(amount),
       currency,
-      status: 'created',
+      status: 'awaiting_gateway_config',
+      message:
+        'Online payment is not configured. Use COD or wallet, or set PAYMENT_GATEWAY_KEY and PAYMENT_GATEWAY_SECRET.',
     };
   }
 
-  // Razorpay-compatible order create (requires PAYMENT_GATEWAY_KEY as key_id)
   const key = process.env.PAYMENT_GATEWAY_KEY;
   const secret = process.env.PAYMENT_GATEWAY_SECRET;
   const auth = Buffer.from(`${key}:${secret}`).toString('base64');
@@ -29,8 +32,11 @@ const createPaymentOrder = async ({ amount, currency = 'INR', orderId, customer 
     body: JSON.stringify({
       amount: Math.round(Number(amount) * 100),
       currency,
-      receipt: String(orderId),
-      notes: { marketplace_order_id: String(orderId) },
+      receipt: String(orderId).slice(0, 40),
+      notes: {
+        marketplace_order_id: String(orderId),
+        customer_id: customer?.id ? String(customer.id) : undefined,
+      },
     }),
   });
 
@@ -41,10 +47,13 @@ const createPaymentOrder = async ({ amount, currency = 'INR', orderId, customer 
 
   const data = await response.json();
   return {
+    configured: true,
     provider: 'razorpay',
+    keyId: key,
+    gatewayOrderId: data.id,
     paymentId: data.id,
     orderId,
-    amount,
+    amount: Number(amount),
     currency,
     status: data.status,
     raw: data,
@@ -52,8 +61,18 @@ const createPaymentOrder = async ({ amount, currency = 'INR', orderId, customer 
 };
 
 const verifyPayment = async ({ paymentId, orderId, signature }) => {
-  if (!process.env.PAYMENT_GATEWAY_SECRET) {
-    return { stub: true, verified: true, paymentId, orderId };
+  if (!isPaymentConfigured()) {
+    return {
+      configured: false,
+      verified: false,
+      paymentId,
+      orderId,
+      message: 'Payment gateway is not configured',
+    };
+  }
+
+  if (!paymentId || !orderId || !signature) {
+    return { configured: true, verified: false, paymentId, orderId };
   }
 
   const payload = `${orderId}|${paymentId}`;
@@ -63,6 +82,7 @@ const verifyPayment = async ({ paymentId, orderId, signature }) => {
     .digest('hex');
 
   return {
+    configured: true,
     verified: expected === signature,
     paymentId,
     orderId,
@@ -74,4 +94,9 @@ const convenienceFee = (amount, percent = 0) => {
   return { amount: Number(amount), fee, total: Number(amount) + fee };
 };
 
-module.exports = { createPaymentOrder, verifyPayment, convenienceFee };
+module.exports = {
+  createPaymentOrder,
+  verifyPayment,
+  convenienceFee,
+  isPaymentConfigured,
+};

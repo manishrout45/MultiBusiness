@@ -31,6 +31,8 @@ router.get('/reports', manager.reportController.generateReports);
 router.get('/analytics', manager.analyticsController.getAnalytics);
 router.get('/notifications', manager.notificationController.listNotifications);
 router.post('/notifications', manager.notificationController.sendNotification);
+router.patch('/notifications/:id/read', manager.notificationController.markRead);
+router.patch('/notifications/read-all', manager.notificationController.markAllRead);
 router.get('/support', manager.supportController.listTickets);
 router.patch('/support/:id', manager.supportController.updateTicket);
 

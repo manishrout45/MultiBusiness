@@ -1,6 +1,7 @@
 ﻿const db = require('../../config/db');
 const Business = require('../../models/Business');
 const { createNotification } = require('../../services/notification.service');
+const { creditWallet } = require('../../services/monetization.service');
 
 const listRefunds = async (req, res, next) => {
   try {
@@ -10,7 +11,7 @@ const listRefunds = async (req, res, next) => {
     }
 
     const [rows] = await db.query(
-      `SELECT r.*, o.order_number, o.customer_id, o.total_amount
+      `SELECT r.*, o.order_number, o.customer_id, o.total_amount, o.payment_method
        FROM refunds r
        JOIN orders o ON o.id = r.order_id
        WHERE o.business_id = ?
@@ -38,7 +39,7 @@ const handleRefund = async (req, res, next) => {
     const status = action.startsWith('approve') ? 'approved' : 'rejected';
 
     const [rows] = await db.query(
-      `SELECT r.*, o.business_id, o.customer_id, o.order_number
+      `SELECT r.*, o.business_id, o.customer_id, o.order_number, o.payment_method, o.payment_status
        FROM refunds r
        JOIN orders o ON o.id = r.order_id
        WHERE r.id = ? AND o.business_id = ?`,
@@ -49,25 +50,54 @@ const handleRefund = async (req, res, next) => {
     }
 
     const refund = rows[0];
-    await db.query('UPDATE refunds SET status = ? WHERE id = ?', [status, refund.id]);
-
-    if (status === 'approved') {
-      await db.query(
-        `UPDATE orders SET payment_status = 'refunded', order_status = 'returned' WHERE id = ?`,
-        [refund.order_id]
-      );
+    if (['approved', 'processed', 'rejected'].includes(refund.status) && status === 'approved') {
+      return res.status(409).json({
+        message: `Refund already ${refund.status}`,
+        data: refund,
+      });
     }
+
+    if (status === 'rejected') {
+      await db.query('UPDATE refunds SET status = ? WHERE id = ?', ['rejected', refund.id]);
+      await createNotification({
+        userId: refund.customer_id,
+        title: 'Refund rejected',
+        message: `Your refund request for order ${refund.order_number} was rejected.`,
+        type: 'refund',
+        link: `/orders/${refund.order_id}`,
+      });
+      const [updated] = await db.query('SELECT * FROM refunds WHERE id = ?', [refund.id]);
+      return res.json({ message: 'Refund rejected', data: updated[0] });
+    }
+
+    // Approve: mark order refunded and credit customer wallet (idempotent by reference)
+    await db.query(
+      `UPDATE orders SET payment_status = 'refunded', order_status = 'returned' WHERE id = ?`,
+      [refund.order_id]
+    );
+
+    await creditWallet(
+      refund.customer_id,
+      Number(refund.amount),
+      `Refund for order ${refund.order_number}`,
+      `refund_${refund.id}`
+    );
+
+    await db.query('UPDATE refunds SET status = ? WHERE id = ?', ['processed', refund.id]);
 
     await createNotification({
       userId: refund.customer_id,
-      title: `Refund ${status}`,
-      message: `Your refund request for order ${refund.order_number} was ${status}.`,
+      title: 'Refund approved',
+      message: `₹${refund.amount} was credited to your wallet for order ${refund.order_number}.`,
       type: 'refund',
       link: `/orders/${refund.order_id}`,
     });
 
     const [updated] = await db.query('SELECT * FROM refunds WHERE id = ?', [refund.id]);
-    res.json({ message: `Refund ${status}`, data: updated[0] });
+    res.json({
+      message: 'Refund approved and wallet credited',
+      data: updated[0],
+    });
   } catch (err) {
     next(err);
   }

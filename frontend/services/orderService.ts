@@ -103,82 +103,52 @@ function loadLocalOrders(): Order[] {
   }
 }
 
-function saveLocalOrders(orders: Order[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(orders));
-}
-
 export const orderService = {
   async listOrders(token?: string | null): Promise<Order[]> {
-    if (token) {
-      try {
-        const res = await apiRequest<{ data: ApiOrderRow[] }>('/customer/orders', { token });
-        return res.data.map((row) => mapOrderSummary(row));
-      } catch {
-        // fall through
-      }
-    }
-    return loadLocalOrders();
+    if (!token) return [];
+    const res = await apiRequest<{ data: ApiOrderRow[] }>('/customer/orders', { token });
+    return res.data.map((row) => mapOrderSummary(row));
   },
 
   async getOrder(id: string, token?: string | null): Promise<Order | null> {
-    if (token) {
-      try {
-        const res = await apiRequest<{
-          data: ApiOrderRow & {
-            items: ApiOrderItem[];
-            business: { id: number; business_name: string; phone?: string; city?: string } | null;
-          };
-        }>(`/customer/orders/${id}`, { token });
-        const { items, business, ...orderRow } = res.data;
-        const order = mapOrderSummary(orderRow, business
-          ? {
-              id: String(business.id),
-              name: business.business_name,
-              phone: business.phone,
-              city: business.city,
-            }
-          : null);
-        order.items = mapOrderItems(items);
-        return order;
-      } catch {
-        // fall through
-      }
-    }
-    return loadLocalOrders().find((o) => o.id === id) ?? null;
+    if (!token) return null;
+    const res = await apiRequest<{
+      data: ApiOrderRow & {
+        items: ApiOrderItem[];
+        business: { id: number; business_name: string; phone?: string; city?: string } | null;
+      };
+    }>(`/customer/orders/${id}`, { token });
+    const { items, business, ...orderRow } = res.data;
+    const order = mapOrderSummary(
+      orderRow,
+      business
+        ? {
+            id: String(business.id),
+            name: business.business_name,
+            phone: business.phone,
+            city: business.city,
+          }
+        : null
+    );
+    order.items = mapOrderItems(items);
+    return order;
   },
 
   async trackOrder(id: string, token?: string | null) {
-    if (token) {
-      try {
-        const res = await apiRequest<{
-          data: {
-            orderNumber: string;
-            orderStatus: string;
-            paymentStatus: string;
-            trackingNumber?: string | null;
-            updatedAt?: string;
-            createdAt: string;
-          };
-        }>(`/customer/orders/${id}/track`, { token });
-        return {
-          ...res.data,
-          status: mapBackendOrderStatus(res.data.orderStatus),
-        };
-      } catch {
-        // fall through
-      }
-    }
-    const order = loadLocalOrders().find((o) => o.id === id);
-    if (!order) return null;
+    if (!token) return null;
+    const res = await apiRequest<{
+      data: {
+        orderNumber: string;
+        orderStatus: string;
+        paymentStatus: string;
+        trackingNumber?: string | null;
+        updatedAt?: string;
+        createdAt: string;
+      };
+    }>(`/customer/orders/${id}/track`, { token });
     return {
-      orderNumber: order.orderNumber,
-      orderStatus: order.status,
-      paymentStatus: order.paymentStatus,
-      trackingNumber: order.trackingNumber,
-      updatedAt: order.updatedAt,
-      createdAt: order.createdAt,
-      status: order.status,
+      ...res.data,
+      status: mapBackendOrderStatus(res.data.orderStatus),
     };
   },
 
@@ -197,67 +167,28 @@ export const orderService = {
       }[];
     },
     token?: string | null
-  ): Promise<Order[]> {
-    if (token) {
-      try {
-        const res = await apiRequest<{ data: (ApiOrderRow & { items: ApiOrderItem[] })[] }>(
-          '/customer/checkout',
-          {
-            method: 'POST',
-            token,
-            body: {
-              shippingAddress: payload.shippingAddress,
-              phone: payload.phone,
-              paymentMethod: payload.paymentMethod,
-            },
-          }
-        );
-        return res.data.map((row) => {
-          const { items, ...orderRow } = row;
-          const order = mapOrderSummary(orderRow);
-          order.items = mapOrderItems(items);
-          return order;
-        });
-      } catch {
-        // fall through to local mock order
-      }
+  ): Promise<{ orders: Order[]; payment?: Record<string, unknown> }> {
+    if (!token) {
+      throw new Error('Sign in required to checkout');
     }
-
-    const grouped = new Map<string, typeof payload.cartItems>();
-    for (const item of payload.cartItems) {
-      const list = grouped.get(item.vendorId) ?? [];
-      list.push(item);
-      grouped.set(item.vendorId, list);
-    }
-
-    const created: Order[] = [];
-    for (const [vendorId, items] of grouped) {
-      const totalAmount = items.reduce((s, i) => s + i.price * i.quantity, 0);
-      const order: Order = {
-        id: `local-order-${Date.now()}-${vendorId}`,
-        orderNumber: `ORD-${Date.now().toString(36).toUpperCase()}`,
-        status: 'pending',
-        paymentStatus: payload.paymentMethod === 'cod' ? 'pending' : 'paid',
-        paymentMethod: payload.paymentMethod,
-        totalAmount: Math.round(totalAmount * 100) / 100,
+    const res = await apiRequest<{
+      data: (ApiOrderRow & { items: ApiOrderItem[] })[];
+      payment?: Record<string, unknown>;
+    }>('/customer/checkout', {
+      method: 'POST',
+      token,
+      body: {
         shippingAddress: payload.shippingAddress,
         phone: payload.phone,
-        vendor: { id: vendorId, name: items[0]?.vendorName ?? 'Vendor' },
-        items: items.map((i, idx) => ({
-          id: `line-${idx}`,
-          productId: i.productId,
-          productName: i.productName,
-          quantity: i.quantity,
-          unitPrice: i.price,
-          totalPrice: Math.round(i.price * i.quantity * 100) / 100,
-        })),
-        createdAt: new Date().toISOString(),
-      };
-      created.push(order);
-    }
-
-    const existing = loadLocalOrders();
-    saveLocalOrders([...created, ...existing]);
-    return created;
+        paymentMethod: payload.paymentMethod,
+      },
+    });
+    const orders = res.data.map((row) => {
+      const { items, ...orderRow } = row;
+      const order = mapOrderSummary(orderRow);
+      order.items = mapOrderItems(items || []);
+      return order;
+    });
+    return { orders, payment: res.payment };
   },
 };

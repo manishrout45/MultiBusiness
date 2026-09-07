@@ -26,6 +26,9 @@ export default defineConfig(({ mode }) => {
       'process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY': JSON.stringify(
         env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || env.VITE_STRIPE_PUBLISHABLE_KEY || ''
       ),
+      'process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID': JSON.stringify(
+        env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || env.VITE_GOOGLE_CLIENT_ID || ''
+      ),
     },
     server: {
       port: 5173,

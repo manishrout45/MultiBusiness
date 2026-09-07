@@ -7,12 +7,14 @@ router.use(authenticate);
 
 // Platform overview — super admin only (business managers use vendor/catalog sections)
 router.get('/dashboard', authorizeAdminOrManager, admin.dashboardController.getDashboard);
+router.get('/analytics', authorizeAdminOrManager, admin.analyticsController.getAnalytics);
 router.get('/users', authorizeSuperAdmin, admin.userController.listUsers);
 router.patch('/users/:id/status', authorizeSuperAdmin, admin.userController.updateUserStatus);
 router.get('/managers', authorizeSuperAdmin, admin.managerController.listManagers);
 router.post('/managers', authorizeSuperAdmin, admin.managerController.createManager);
 router.patch('/managers/:id', authorizeSuperAdmin, admin.managerController.updateManager);
 router.get('/commissions', authorizeSuperAdmin, admin.commissionController.listCommissions);
+router.get('/commissions/earnings', authorizeSuperAdmin, admin.commissionController.earningsReport);
 router.patch('/commissions/:id', authorizeSuperAdmin, admin.commissionController.updateCommission);
 router.get('/reports/sales', authorizeSuperAdmin, admin.reportController.salesReport);
 router.get('/reports/revenue', authorizeSuperAdmin, admin.reportController.revenueReport);
@@ -20,6 +22,8 @@ router.get('/subscriptions', authorizeSuperAdmin, admin.subscriptionController.l
 router.patch('/subscriptions/:id', authorizeSuperAdmin, admin.subscriptionController.updatePlan);
 router.get('/settings', authorizeSuperAdmin, admin.settingsController.getSettings);
 router.patch('/settings', authorizeSuperAdmin, admin.settingsController.updateSettings);
+router.get('/theme', authorizeAdminOrManager, require('../controllers/common/platform.controller').getPublicTheme);
+router.patch('/theme', authorizeAdminOrManager, require('../controllers/common/platform.controller').updateTheme);
 
 // Vendor & catalog management — super admin + business manager
 router.get('/businesses/pending', authorizeAdminOrManager, admin.businessController.listPending);

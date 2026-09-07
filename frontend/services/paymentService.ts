@@ -1,5 +1,6 @@
 import type { PaymentMethodId, PaymentStatus } from '@/lib/constants';
 import type { Order } from '@/services/orderService';
+import { apiRequest } from '@/lib/api';
 
 export interface CheckoutPayload {
   shippingAddress: string;
@@ -12,10 +13,9 @@ export interface PaymentResult {
   orderIds: string[];
   orderNumbers: string[];
   message: string;
-  gateway?: 'razorpay' | 'stripe' | 'mock';
+  gateway?: 'razorpay' | 'stripe' | 'none';
 }
 
-/** Gateway config placeholders for future integration */
 export const paymentGatewayConfig = {
   razorpay: {
     keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? '',
@@ -28,13 +28,10 @@ export const paymentGatewayConfig = {
 };
 
 export const paymentService = {
-  /**
-   * Process payment after checkout. When gateway keys are configured,
-   * this is where Razorpay/Stripe SDK calls would be initiated.
-   */
   async processPayment(
     paymentMethod: PaymentMethodId,
-    orders: Order[]
+    orders: Order[],
+    gateway?: Array<Record<string, unknown>>
   ): Promise<PaymentResult> {
     const orderIds = orders.map((o) => o.id);
     const orderNumbers = orders.map((o) => o.orderNumber);
@@ -45,40 +42,55 @@ export const paymentService = {
         orderIds,
         orderNumbers,
         message: 'Order placed. Pay on delivery.',
-        gateway: 'mock',
+        gateway: 'none',
       };
     }
 
-    if (paymentGatewayConfig.razorpay.enabled) {
-      // Future: load Razorpay checkout script and open modal
+    if (paymentMethod === 'wallet') {
+      return {
+        status: 'success',
+        orderIds,
+        orderNumbers,
+        message: 'Order paid with wallet.',
+        gateway: 'none',
+      };
+    }
+
+    const first = gateway?.[0];
+    if (first?.configured && first?.provider === 'razorpay' && first?.keyId) {
       return {
         status: 'pending',
         orderIds,
         orderNumbers,
-        message: 'Redirecting to Razorpay…',
+        message: 'Complete Razorpay checkout to confirm payment.',
         gateway: 'razorpay',
       };
     }
 
-    if (paymentGatewayConfig.stripe.enabled) {
-      return {
-        status: 'pending',
-        orderIds,
-        orderNumbers,
-        message: 'Redirecting to Stripe…',
-        gateway: 'stripe',
-      };
-    }
-
-    // Simulated instant success for card/UPI/net banking without gateway keys
-    await new Promise((r) => setTimeout(r, 800));
     return {
-      status: 'success',
+      status: 'pending',
       orderIds,
       orderNumbers,
-      message: 'Payment successful. Your order is confirmed.',
-      gateway: 'mock',
+      message:
+        'Order placed with pending payment. Online gateway is not configured — use COD or wallet, or set Razorpay keys.',
+      gateway: 'none',
     };
+  },
+
+  async confirmRazorpayPayment(
+    payload: {
+      orderId: string;
+      paymentId: string;
+      signature: string;
+      gatewayOrderId?: string;
+    },
+    token?: string | null
+  ) {
+    return apiRequest('/customer/payments/confirm', {
+      method: 'POST',
+      token,
+      body: payload,
+    });
   },
 
   getPaymentStatusLabel(status: PaymentStatus): string {

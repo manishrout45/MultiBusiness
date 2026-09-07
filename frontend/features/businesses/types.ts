@@ -41,10 +41,13 @@ export interface BusinessProduct {
   id: string | number;
   name: string;
   description?: string | null;
-  price: number;
-  sale_price?: number | null;
-  stock?: number;
+  price: number | string;
+  sale_price?: number | string | null;
+  stock?: number | string;
   status?: string;
+  image_url?: string | null;
+  category_name?: string | null;
+  category_slug?: string | null;
   images?: { file_path?: string }[];
 }
 

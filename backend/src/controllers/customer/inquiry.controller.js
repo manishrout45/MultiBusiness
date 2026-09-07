@@ -1,6 +1,11 @@
 ﻿const db = require('../../config/db');
 const { createNotification } = require('../../services/notification.service');
-const { getSetting, recordLeadCharge } = require('../../services/monetization.service');
+const {
+  getSetting,
+  recordLeadCharge,
+  markLeadChargeStatus,
+  debitWallet,
+} = require('../../services/monetization.service');
 
 const createInquiry = async (req, res, next) => {
   try {
@@ -55,10 +60,30 @@ const createInquiry = async (req, res, next) => {
       amount: leadFee,
     });
 
+    let leadStatus = 'pending';
+    let leadNote = 'Lead fee recorded as pending (vendor wallet not charged).';
+    try {
+      await debitWallet(
+        businessRows[0].owner_id,
+        leadFee,
+        `Lead charge for inquiry #${result.insertId}`,
+        `lead_${result.insertId}`
+      );
+      await markLeadChargeStatus(chargeId, 'charged');
+      leadStatus = 'charged';
+      leadNote = 'Lead fee debited from vendor wallet.';
+    } catch (err) {
+      if (err.statusCode !== 400) {
+        throw err;
+      }
+      leadNote =
+        'Lead fee pending — vendor wallet has insufficient balance. Charge remains pending.';
+    }
+
     await createNotification({
       userId: businessRows[0].owner_id,
       title: 'New customer inquiry',
-      message: `New lead for ${businessRows[0].business_name}. Lead fee ₹${leadFee} recorded.`,
+      message: `New lead for ${businessRows[0].business_name}. ${leadNote}`,
       type: 'inquiry',
       link: '/vendor/inquiries',
     });
@@ -67,7 +92,7 @@ const createInquiry = async (req, res, next) => {
     res.status(201).json({
       message: 'Inquiry submitted',
       data: rows[0],
-      leadCharge: { id: chargeId, amount: leadFee, status: 'pending' },
+      leadCharge: { id: chargeId, amount: leadFee, status: leadStatus, note: leadNote },
     });
   } catch (err) {
     next(err);

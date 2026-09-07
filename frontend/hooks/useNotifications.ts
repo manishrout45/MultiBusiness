@@ -29,7 +29,12 @@ export function useNotifications() {
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    if (!isAuthenticated) return;
+    const id = window.setInterval(() => {
+      void refresh();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [refresh, isAuthenticated]);
 
   const unreadCount = useMemo(() => items.filter((n) => !n.read).length, [items]);
 

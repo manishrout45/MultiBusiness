@@ -12,6 +12,9 @@ import AdminDashboardPage from '@/app/admin/dashboard/page';
 import HomePage from '@/app/page';
 import LoginPage from '@/app/login/page';
 import RegisterPage from '@/app/register/page';
+import ForgotPasswordPage from '@/app/forgot-password/page';
+import ResetPasswordPage from '@/app/reset-password/page';
+import VerifyEmailPage from '@/app/verify-email/page';
 import SearchPage from '@/app/search/page';
 import CategoriesPage from '@/app/categories/page';
 import CategoryDetailPage from '@/app/categories/CategoryDetailPage';
@@ -80,6 +83,9 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/categories/:slug" element={<CategoryDetailPage />} />

@@ -86,7 +86,7 @@ export const notificationService = {
     if (!token || id.startsWith('n')) return;
     const audience = audienceForRole(role);
     const base = listPath(audience);
-    if (!base || audience === 'admin') return;
+    if (!base) return;
     await apiRequest(`${base}/${id}/read`, { method: 'PATCH', token });
   },
 
@@ -94,7 +94,7 @@ export const notificationService = {
     if (!token) return;
     const audience = audienceForRole(role);
     const base = listPath(audience);
-    if (!base || audience === 'admin') return;
+    if (!base) return;
     await apiRequest(`${base}/read-all`, { method: 'PATCH', token });
   },
 

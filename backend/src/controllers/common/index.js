@@ -4,5 +4,6 @@
   offerController: require('./offer.controller.js'),
   productController: require('./product.controller.js'),
   reviewController: require('./review.controller.js'),
+  platformController: require('./platform.controller.js'),
 };
 

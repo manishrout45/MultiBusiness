@@ -11,6 +11,10 @@ const router = require('express').Router();
 
 router.post('/register', registerValidator, validate, authController.register);
 router.post('/login', loginValidator, validate, authController.login);
+router.post('/google', authController.googleLogin);
+router.post('/phone/send-otp', authController.sendPhoneOtp);
+router.post('/phone/verify-otp', authController.verifyPhoneOtp);
+router.post('/email/send-otp', authController.sendEmailOtp);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/verify-mobile', authController.verifyMobile);
 router.post('/forgot-password', forgotPasswordValidator, validate, authController.forgotPassword);

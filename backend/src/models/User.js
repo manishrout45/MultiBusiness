@@ -1,15 +1,29 @@
-// User model — placeholder for MySQL queries
+// User model — MySQL queries
 const db = require('../config/db');
 
 const User = {
   findByEmail: async (email) => {
-    const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+    const [rows] = await db.query('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [email]);
+    return rows[0] || null;
+  },
+
+  findByPhone: async (phone) => {
+    const digits = String(phone || '').replace(/\D/g, '');
+    const local10 = digits.length >= 10 ? digits.slice(-10) : digits;
+    const [rows] = await db.query(
+      `SELECT * FROM users
+       WHERE phone = ?
+          OR REPLACE(REPLACE(phone, '+', ''), ' ', '') = ?
+          OR RIGHT(REPLACE(REPLACE(phone, '+', ''), ' ', ''), 10) = ?
+       LIMIT 1`,
+      [phone, digits, local10]
+    );
     return rows[0] || null;
   },
 
   findById: async (id) => {
     const [rows] = await db.query(
-      'SELECT id, name, email, phone, role, status, created_at FROM users WHERE id = ?',
+      'SELECT id, name, email, phone, role, status, avatar, created_at FROM users WHERE id = ?',
       [id]
     );
     return rows[0] || null;

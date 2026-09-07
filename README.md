@@ -51,14 +51,21 @@ npm run dev
 
 ## Features implemented
 
-- Auth: register, login, password reset, email/mobile verify stubs
-- Public catalog: search, categories, products, businesses, featured, offers
-- Vendor: profile, products, orders, inquiries, offers, analytics, subscription, export
-- Customer: wishlist, cart, multi-vendor COD/wallet checkout, tracking, invoice HTML, reviews, support, inquiries
-- Manager: vendor verify/recommend, product approve, orders, reports, support, ads, review moderation
-- Admin: users, managers, business approve/feature/verify, categories, commissions, reports, settings, subscriptions
-- Monetization: subscriptions, commission, featured, ads, lead fees, wallet
-- Integrations: email/SMS stubs → real when env set; Razorpay-ready payments; Maps directions/embed
+- Auth: register → login, Google, phone OTP (DB), email OTP verify, password reset
+- Payments: COD/wallet real; Razorpay when keys set; no silent mock paid
+- Public catalog: search, categories, products, businesses, theme, banners, announcements, reviews
+- Vendor / customer / manager / admin role APIs with live DB access checks
+- Notifications for orders, products, announcements
+- Analytics & commission earnings from MySQL (no demo charts)
+
+## Production env keys
+
+Set these in `backend/.env` for full live behavior:
+
+- `PAYMENT_GATEWAY_KEY` / `PAYMENT_GATEWAY_SECRET` (Razorpay)
+- `EMAIL_HOST` / `EMAIL_USER` / `EMAIL_PASSWORD` / `EMAIL_FROM`
+- `SMS_API_URL` / `SMS_API_KEY` / `SMS_SENDER_ID`
+- Matching `NEXT_PUBLIC_RAZORPAY_KEY_ID` on frontend
 
 ## Project structure
 

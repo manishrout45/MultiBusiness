@@ -18,6 +18,7 @@ import {
   type SearchResultTab,
   type SortOption,
 } from '@/components/discovery';
+import { HomeAnnouncements } from '@/components/discovery/HomeAnnouncements';
 import type { Business } from '@/features/businesses';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import {
@@ -311,6 +312,7 @@ export function HomeDiscoveryPage() {
 
   return (
     <div className="bg-card">
+      <HomeAnnouncements />
       <PopularCategoriesGrid categories={displayCategories} />
       <HomeHeroBanner />
 

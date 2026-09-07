@@ -25,12 +25,31 @@ export interface LoginInput {
   password: string;
 }
 
+export interface PhoneOtpSendResponse {
+  message: string;
+  phone: string;
+  expiresIn: number;
+  devOtp?: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+  user: AuthUser;
+  needsEmailVerification?: boolean;
+  devOtp?: string;
+}
+
 export interface RegisterInput {
   name: string;
   email: string;
   password: string;
   phone?: string;
   role: 'customer' | 'vendor';
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+  resetUrl?: string;
 }
 
 export const AUTH_TOKEN_KEY = 'marketplace_auth_token';

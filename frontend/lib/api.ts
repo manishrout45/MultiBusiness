@@ -2,6 +2,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api';
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
   payload: unknown;
 
   constructor(message: string, status: number, payload?: unknown) {
@@ -9,7 +10,20 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     this.status = status;
     this.payload = payload;
+    if (
+      typeof payload === 'object' &&
+      payload !== null &&
+      'code' in payload &&
+      typeof (payload as { code: unknown }).code === 'string'
+    ) {
+      this.code = (payload as { code: string }).code;
+    }
   }
+}
+
+export function getApiErrorCode(err: unknown): string | undefined {
+  if (err instanceof ApiError) return err.code;
+  return undefined;
 }
 
 export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {

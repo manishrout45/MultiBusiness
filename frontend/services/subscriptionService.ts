@@ -191,17 +191,7 @@ export const subscriptionService = {
         // fall through
       }
     }
-    return {
-      id: 'local-sub',
-      planId: '1',
-      planName: 'Basic',
-      slug: 'basic',
-      monthlyFee: 499,
-      status: 'active',
-      startDate: new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10),
-      endDate: new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10),
-      features: DEFAULT_PLANS[0].features,
-    };
+    return null;
   },
 
   async subscribe(

@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Quote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DEFAULT_SUCCESS_STORIES } from '@/components/success-stories';
 import type { SuccessStoryStat } from '@/components/success-stories';
+import { fetchSuccessStories } from '@/services/successStoriesService';
 
 const STORIES = [
   {
@@ -31,8 +32,15 @@ const STORIES = [
 ] as const;
 
 function StatGrid({ stats }: { stats: SuccessStoryStat[] }) {
+  if (!stats.length) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Live stats will appear once the API is reachable.
+      </p>
+    );
+  }
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       {stats.map((stat, i) => (
         <motion.div
           key={stat.id}
@@ -50,7 +58,11 @@ function StatGrid({ stats }: { stats: SuccessStoryStat[] }) {
 }
 
 export function SuccessStoriesPageClient() {
-  const { stats } = DEFAULT_SUCCESS_STORIES;
+  const [stats, setStats] = useState<SuccessStoryStat[]>([]);
+
+  useEffect(() => {
+    fetchSuccessStories().then((data) => setStats(data.stats));
+  }, []);
 
   return (
     <div className="pb-20">
@@ -64,8 +76,7 @@ export function SuccessStoriesPageClient() {
           </Button>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Success Stories</h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Discover how local businesses grow with LocalMart — from first listing to
-            thousands of orders.
+            Live marketplace numbers from LocalMart — vendors, customers, orders, and more.
           </p>
         </div>
       </div>
@@ -78,38 +89,20 @@ export function SuccessStoriesPageClient() {
 
         <section>
           <h2 className="mb-6 text-xl font-bold">Featured seller stories</h2>
-          <div className="grid gap-6 lg:grid-cols-3">
-            {STORIES.map((story, i) => (
-              <motion.article
+          <div className="grid gap-6 md:grid-cols-3">
+            {STORIES.map((story) => (
+              <article
                 key={story.name}
-                initial={{ opacity: 0, y: 14 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
                 className="rounded-3xl border bg-card p-6 marketplace-shadow"
               >
-                <Quote className="size-8 text-primary/30" />
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                  “{story.quote}”
-                </p>
-                <div className="mt-6 border-t pt-4">
-                  <p className="font-bold">{story.name}</p>
-                  <p className="text-sm text-muted-foreground">{story.city}</p>
-                  <p className="mt-2 text-sm font-semibold text-primary">{story.growth}</p>
-                </div>
-              </motion.article>
+                <Quote className="size-5 text-primary" />
+                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{story.quote}</p>
+                <p className="mt-4 font-semibold">{story.name}</p>
+                <p className="text-xs text-muted-foreground">{story.city}</p>
+                <p className="mt-2 text-sm font-medium text-primary">{story.growth}</p>
+              </article>
             ))}
           </div>
-        </section>
-
-        <section className="rounded-3xl bg-primary p-8 text-primary-foreground sm:p-10">
-          <h2 className="text-2xl font-bold">Ready to write your story?</h2>
-          <p className="mt-2 max-w-lg text-primary-foreground/85">
-            Join thousands of local businesses selling online with LocalMart.
-          </p>
-          <Button asChild size="lg" className="mt-6 rounded-full bg-white text-primary hover:bg-white/90">
-            <Link href="/register">Become a Seller</Link>
-          </Button>
         </section>
       </div>
     </div>

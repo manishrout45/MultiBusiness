@@ -1,20 +1,35 @@
-import { API_BASE_URL } from '@/lib/constants';
-import {
-  DEFAULT_SUCCESS_STORIES,
-  type SuccessStoriesData,
-} from '@/components/success-stories';
+import { apiRequest } from '@/lib/api';
+import type { SuccessStoriesData } from '@/components/success-stories/types';
 
-/** Fetch platform success metrics — falls back to defaults for demo / offline */
 export async function fetchSuccessStories(): Promise<SuccessStoriesData> {
   try {
-    const res = await fetch(`${API_BASE_URL}/platform/success-stories`);
-    if (!res.ok) return DEFAULT_SUCCESS_STORIES;
-    const data = (await res.json()) as { data?: SuccessStoriesData };
-    if (data?.data?.stats?.length) return data.data;
-    return DEFAULT_SUCCESS_STORIES;
+    const stats = await apiRequest<{
+      data: {
+        vendors: number;
+        customers: number;
+        ordersDelivered: number;
+        products: number;
+        reviews: number;
+        cities: number;
+      };
+    }>('/platform/stats');
+
+    return {
+      updatedAt: new Date().toISOString(),
+      stats: [
+        { id: 'vendors', value: String(stats.data.vendors), label: 'Vendors' },
+        { id: 'customers', value: String(stats.data.customers), label: 'Customers' },
+        {
+          id: 'orders',
+          value: String(stats.data.ordersDelivered),
+          label: 'Orders delivered',
+        },
+        { id: 'products', value: String(stats.data.products), label: 'Products' },
+        { id: 'reviews', value: String(stats.data.reviews), label: 'Reviews' },
+        { id: 'cities', value: String(stats.data.cities), label: 'Cities' },
+      ],
+    };
   } catch {
-    return DEFAULT_SUCCESS_STORIES;
+    return { updatedAt: new Date().toISOString(), stats: [] };
   }
 }
-
-export { DEFAULT_SUCCESS_STORIES };

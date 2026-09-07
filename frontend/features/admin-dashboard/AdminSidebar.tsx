@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth';
 import { cn } from '@/lib/utils';
 
 export type AdminSection =
@@ -37,19 +38,20 @@ const LINKS: Array<{
   section: AdminSection;
   label: string;
   icon: typeof LayoutDashboard;
+  roles: Array<'super_admin' | 'business_manager'>;
 }> = [
-  { section: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { section: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { section: 'users', label: 'Users', icon: Users },
-  { section: 'vendors', label: 'Vendors', icon: Store },
-  { section: 'orders', label: 'Orders', icon: ClipboardList },
-  { section: 'reviews', label: 'Reviews', icon: Star },
-  { section: 'categories', label: 'Categories', icon: FolderTree },
-  { section: 'theme', label: 'Theme', icon: Palette },
-  { section: 'offers', label: 'Offers', icon: Tag },
-  { section: 'announcements', label: 'Announcements', icon: Megaphone },
-  { section: 'reports', label: 'Reports', icon: Flag },
-  { section: 'commissions', label: 'Commissions', icon: Percent },
+  { section: 'overview', label: 'Overview', icon: LayoutDashboard, roles: ['super_admin', 'business_manager'] },
+  { section: 'analytics', label: 'Analytics', icon: BarChart3, roles: ['super_admin', 'business_manager'] },
+  { section: 'users', label: 'Users', icon: Users, roles: ['super_admin'] },
+  { section: 'vendors', label: 'Vendors', icon: Store, roles: ['super_admin', 'business_manager'] },
+  { section: 'orders', label: 'Orders', icon: ClipboardList, roles: ['super_admin', 'business_manager'] },
+  { section: 'reviews', label: 'Reviews', icon: Star, roles: ['super_admin', 'business_manager'] },
+  { section: 'categories', label: 'Categories', icon: FolderTree, roles: ['super_admin', 'business_manager'] },
+  { section: 'theme', label: 'Theme', icon: Palette, roles: ['super_admin', 'business_manager'] },
+  { section: 'offers', label: 'Offers / Banners', icon: Tag, roles: ['super_admin', 'business_manager'] },
+  { section: 'announcements', label: 'Announcements', icon: Megaphone, roles: ['super_admin', 'business_manager'] },
+  { section: 'reports', label: 'Reports', icon: Flag, roles: ['super_admin'] },
+  { section: 'commissions', label: 'Commissions', icon: Percent, roles: ['super_admin'] },
 ];
 
 export const ADMIN_SECTIONS = new Set<string>(LINKS.map((l) => l.section));
@@ -71,12 +73,16 @@ export function AdminSidebar({
   activeSection = 'overview',
   onNavigate,
 }: AdminSidebarProps) {
+  const { user } = useAuth();
+  const role = user?.role === 'business_manager' ? 'business_manager' : 'super_admin';
+  const links = LINKS.filter((link) => link.roles.includes(role));
+
   const nav = (
     <nav className="flex flex-col gap-1 p-3">
       <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Super admin
+        {role === 'super_admin' ? 'Super admin' : 'Business manager'}
       </p>
-      {LINKS.map(({ section, label, icon: Icon }) => {
+      {links.map(({ section, label, icon: Icon }) => {
         const active = activeSection === section;
         return (
           <Link
@@ -118,9 +124,9 @@ export function AdminSidebar({
             aria-label="Close"
           />
           <div className="absolute left-0 top-0 flex h-full w-64 flex-col bg-card shadow-xl">
-            <div className="flex items-center justify-between border-b px-3 py-3">
-              <span className="font-semibold">Admin</span>
-              <Button variant="ghost" size="icon" onClick={onClose}>
+            <div className="flex items-center justify-between border-b border-border px-3 py-3">
+              <span className="text-sm font-semibold">Menu</span>
+              <Button type="button" size="icon" variant="ghost" onClick={onClose}>
                 <X className="size-4" />
               </Button>
             </div>

@@ -1,6 +1,4 @@
 import {
-  FEATURED_BUSINESSES,
-  filterBusinesses,
   mapApiBusiness,
   parseBusinessIdFromSlug,
   type ApiBusinessRow,
@@ -24,28 +22,6 @@ interface ApiProductsEnvelope {
   data: BusinessProduct[];
 }
 
-function fallbackList(params: BusinessSearchParams): BusinessListResponse {
-  const { query = '', category, city, minRating, featured, page = 1, limit = 12 } = params;
-  let data = filterBusinesses(FEATURED_BUSINESSES, query, category);
-  if (city) {
-    data = data.filter((b) => b.city.toLowerCase().includes(city.toLowerCase()));
-  }
-  if (minRating != null) {
-    data = data.filter((b) => (b.rating || 0) >= minRating);
-  }
-  if (featured !== undefined) {
-    data = data.filter((b) => b.featured === featured);
-  }
-  const start = (page - 1) * limit;
-  return {
-    data: data.slice(start, start + limit),
-    total: data.length,
-    page,
-    limit,
-    source: 'fallback',
-  };
-}
-
 export async function fetchBusinesses(
   params: BusinessSearchParams = {}
 ): Promise<BusinessListResponse> {
@@ -53,52 +29,47 @@ export async function fetchBusinesses(
     params;
   const offset = (page - 1) * limit;
 
-  try {
-    if (featured) {
-      const featuredRes = await apiRequest<ApiListEnvelope>('/featured', {
-        next: { revalidate: 60 },
-      });
-      let mapped = (featuredRes.data || []).map(mapApiBusiness);
-      if (minRating != null) {
-        mapped = mapped.filter((b) => (b.rating || 0) >= minRating);
-      }
-      if (city) {
-        mapped = mapped.filter((b) => b.city.toLowerCase().includes(city.toLowerCase()));
-      }
-      return {
-        data: mapped.slice(0, limit),
-        total: mapped.length,
-        page,
-        limit,
-        source: 'api',
-      };
+  if (featured) {
+    const featuredRes = await apiRequest<ApiListEnvelope>('/featured', {
+      next: { revalidate: 60 },
+    });
+    let mapped = (featuredRes.data || []).map(mapApiBusiness);
+    if (minRating != null) {
+      mapped = mapped.filter((b) => (b.rating || 0) >= minRating);
     }
-
-    const searchParams = new URLSearchParams();
-    if (query) searchParams.set('q', query);
-    if (categoryId) searchParams.set('categoryId', String(categoryId));
-    else if (category) searchParams.set('category', category);
-    if (city) searchParams.set('city', city);
-    if (minRating != null) searchParams.set('minRating', String(minRating));
-    searchParams.set('limit', String(limit));
-    searchParams.set('offset', String(offset));
-
-    const response = await apiRequest<ApiListEnvelope>(
-      `/businesses?${searchParams.toString()}`,
-      { next: { revalidate: 30 } }
-    );
-
-    const mapped = (response.data || []).map(mapApiBusiness);
+    if (city) {
+      mapped = mapped.filter((b) => b.city.toLowerCase().includes(city.toLowerCase()));
+    }
     return {
-      data: mapped,
+      data: mapped.slice(0, limit),
       total: mapped.length,
       page,
       limit,
       source: 'api',
     };
-  } catch {
-    return fallbackList(params);
   }
+
+  const searchParams = new URLSearchParams();
+  if (query) searchParams.set('q', query);
+  if (categoryId) searchParams.set('categoryId', String(categoryId));
+  else if (category) searchParams.set('category', category);
+  if (city) searchParams.set('city', city);
+  if (minRating != null) searchParams.set('minRating', String(minRating));
+  searchParams.set('limit', String(limit));
+  searchParams.set('offset', String(offset));
+
+  const response = await apiRequest<ApiListEnvelope>(`/businesses?${searchParams.toString()}`, {
+    next: { revalidate: 30 },
+  });
+
+  const mapped = (response.data || []).map(mapApiBusiness);
+  return {
+    data: mapped,
+    total: mapped.length,
+    page,
+    limit,
+    source: 'api',
+  };
 }
 
 /** Fetch a larger pool of businesses for map / nearby filtering. */
@@ -118,7 +89,6 @@ export async function fetchNearbyBusinessPool(params: {
   return result.data;
 }
 
-
 export async function fetchFeaturedBusinesses(): Promise<Business[]> {
   const result = await fetchBusinesses({ featured: true, limit: 8 });
   return result.data;
@@ -130,35 +100,28 @@ export async function searchBusinesses(query: string, category?: string): Promis
 }
 
 export async function fetchBusinessBySlug(slug: string): Promise<BusinessDetail | null> {
-  const local = FEATURED_BUSINESSES.find((b) => b.slug === slug);
-  const apiId = parseBusinessIdFromSlug(slug) ?? (local ? local.id : null);
+  const apiId = parseBusinessIdFromSlug(slug);
+  if (!apiId) return null;
 
-  if (apiId) {
-    try {
-      const [businessRes, productsRes] = await Promise.all([
-        apiRequest<ApiItemEnvelope>(`/businesses/${apiId}`, {
-          next: { revalidate: 30 },
-        }),
-        apiRequest<ApiProductsEnvelope>(`/businesses/${apiId}/products`, {
-          next: { revalidate: 30 },
-        }).catch(() => ({ data: [] as BusinessProduct[] })),
-      ]);
+  try {
+    const [businessRes, productsRes] = await Promise.all([
+      apiRequest<ApiItemEnvelope>(`/businesses/${apiId}`, {
+        next: { revalidate: 30 },
+      }),
+      apiRequest<ApiProductsEnvelope>(`/businesses/${apiId}/products`, {
+        next: { revalidate: 30 },
+      }).catch(() => ({ data: [] as BusinessProduct[] })),
+    ]);
 
-      const business = mapApiBusiness(businessRes.data);
-      return {
-        ...business,
-        products: productsRes.data || [],
-      };
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404 && local) {
-        return local;
-      }
-      if (local) return local;
-      return null;
-    }
+    const business = mapApiBusiness(businessRes.data);
+    return {
+      ...business,
+      products: productsRes.data || [],
+    };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
   }
-
-  return local ?? null;
 }
 
 export async function fetchBusinessesForListing(

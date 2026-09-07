@@ -81,10 +81,15 @@ const updateAd = async (req, res, next) => {
       });
     }
     const linkUrl = req.body.link_url ?? req.body.linkUrl ?? existing[0].link_url;
+    const imagePath = req.body.image_path ?? req.body.imagePath ?? existing[0].image_path;
+    const startDate = req.body.start_date ?? req.body.startDate ?? existing[0].start_date;
+    const endDate = req.body.end_date ?? req.body.endDate ?? existing[0].end_date;
 
     await db.query(
-      'UPDATE advertisements SET title = ?, status = ?, link_url = ? WHERE id = ?',
-      [title, status, linkUrl, id]
+      `UPDATE advertisements
+       SET title = ?, status = ?, link_url = ?, image_path = ?, start_date = ?, end_date = ?
+       WHERE id = ?`,
+      [title, status, linkUrl, imagePath, startDate, endDate, id]
     );
     const [rows] = await db.query('SELECT * FROM advertisements WHERE id = ?', [id]);
     res.json({ message: 'Offer updated', data: rows[0] });

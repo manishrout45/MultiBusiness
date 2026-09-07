@@ -38,9 +38,8 @@ export async function fetchHomeBanners(): Promise<HomeBanner[]> {
     const res = await apiRequest<{ data: Record<string, unknown>[] }>('/banners', {
       next: { revalidate: 60 },
     });
-    const mapped = (res.data || []).map(mapBanner);
-    return mapped.length ? mapped : DEFAULT_BANNERS;
+    return (res.data || []).map(mapBanner);
   } catch {
-    return DEFAULT_BANNERS;
+    return [];
   }
 }

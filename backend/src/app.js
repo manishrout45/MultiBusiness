@@ -37,12 +37,19 @@ app.post('/api/payments/webhook', async (req, res, next) => {
     const { paymentId, orderId, signature, orderNumber } = req.body;
     const result = await verifyPayment({ paymentId, orderId, signature });
     if (!result.verified) {
-      return res.status(400).json({ message: 'Invalid payment signature' });
+      return res.status(400).json({ message: result.message || 'Invalid payment signature' });
     }
     if (orderNumber) {
       await db.query(`UPDATE orders SET payment_status = 'paid' WHERE order_number = ?`, [
         orderNumber,
       ]);
+      await db.query(
+        `UPDATE payments p
+         JOIN orders o ON o.id = p.order_id
+         SET p.status = 'success', p.gateway_payment_id = ?
+         WHERE o.order_number = ?`,
+        [paymentId, orderNumber]
+      );
     }
     res.json({ message: 'Payment verified', data: result });
   } catch (err) {

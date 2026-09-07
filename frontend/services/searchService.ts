@@ -1,5 +1,3 @@
-import { FEATURED_BUSINESSES, filterBusinesses } from '@/features/businesses';
-import { MOCK_PRODUCTS } from '@/features/products';
 import { apiRequest } from '@/lib/api';
 
 export interface SearchFilters {
@@ -84,41 +82,7 @@ export async function searchMarketplace(filters: SearchFilters = {}): Promise<Se
 
     return { data, total: data.length, source: 'api' };
   } catch {
-    const businesses = filterBusinesses(FEATURED_BUSINESSES, query, category).map((b) => ({
-      id: `b-${b.id}`,
-      type: 'business' as const,
-      title: b.name,
-      subtitle: b.description,
-      category: b.category,
-      location: b.city,
-      rating: b.rating,
-      imageUrl: b.imageUrl,
-      href: `/business/${b.slug}`,
-    }));
-
-    const products = MOCK_PRODUCTS.filter((p) => {
-      const q = query.toLowerCase();
-      const matchQuery =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q);
-      const matchCategory = !category || p.categorySlug === category;
-      return matchQuery && matchCategory;
-    }).map((p) => ({
-      id: `p-${p.id}`,
-      type: 'product' as const,
-      title: p.name,
-      subtitle: p.description,
-      category: p.category,
-      price: p.salePrice ?? p.price,
-      imageUrl: p.images[0],
-      href: `/business/sharma-electronics`,
-    }));
-
-    let data = [...businesses, ...products];
-    data = applyClientFilters(data, { minPrice, maxPrice, minRating, location, query, category });
-    return { data, total: data.length, source: 'fallback' };
+    return { data: [], total: 0, source: 'api' };
   }
 }
 

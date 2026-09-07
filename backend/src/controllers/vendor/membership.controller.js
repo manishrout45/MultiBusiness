@@ -19,11 +19,10 @@ const listPlans = async (req, res, next) => {
       membershipOffers = offers;
     }
 
+    // FE subscriptionService expects data to be the plans array
     res.json({
-      data: {
-        subscriptionPlans: plans,
-        membershipOffers,
-      },
+      data: plans,
+      membershipOffers,
     });
   } catch (err) {
     next(err);

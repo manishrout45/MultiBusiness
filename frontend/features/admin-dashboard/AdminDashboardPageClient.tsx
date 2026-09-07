@@ -41,6 +41,7 @@ export function AdminDashboardPageClient() {
 
   const isAdmin =
     user?.role === 'super_admin' || user?.role === 'business_manager';
+  const isSuperAdmin = user?.role === 'super_admin';
 
   useEffect(() => {
     setSection(readSectionFromHash());
@@ -53,6 +54,12 @@ export function AdminDashboardPageClient() {
       window.removeEventListener('popstate', onPop);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin && (section === 'users' || section === 'reports' || section === 'commissions')) {
+      setSection('overview');
+    }
+  }, [isSuperAdmin, section]);
 
   const navigate = useCallback((next: AdminSection) => {
     setSection(next);
@@ -217,7 +224,7 @@ export function AdminDashboardPageClient() {
             </section>
           )}
 
-          {section === 'users' && <UserManagement />}
+          {section === 'users' && isSuperAdmin && <UserManagement />}
           {section === 'vendors' && <VendorManagement />}
           {section === 'orders' && <OrderMonitoring />}
           {section === 'reviews' && <ReviewModeration />}
@@ -225,8 +232,8 @@ export function AdminDashboardPageClient() {
           {section === 'theme' && <ThemeManagement />}
           {section === 'offers' && <OffersManagement />}
           {section === 'announcements' && <AnnouncementsManagement />}
-          {section === 'reports' && <ReportsManagement />}
-          {section === 'commissions' && <CommissionManagement />}
+          {section === 'reports' && isSuperAdmin && <ReportsManagement />}
+          {section === 'commissions' && isSuperAdmin && <CommissionManagement />}
         </div>
       </div>
     </div>

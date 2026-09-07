@@ -1,4 +1,5 @@
 module.exports = {
+  analyticsController: require('./analytics.controller.js'),
   businessController: require('./business.controller.js'),
   categoryController: require('./category.controller.js'),
   commissionController: require('./commission.controller.js'),

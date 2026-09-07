@@ -45,6 +45,7 @@ async function run() {
   assert.ok(typeof token === 'string' && token.length > 20);
 
   console.log('All smoke tests passed.');
+  process.exit(0);
 }
 
 run().catch((err) => {

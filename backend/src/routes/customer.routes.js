@@ -21,6 +21,11 @@ router.post(
   validateBody(['shippingAddress', 'phone', 'paymentMethod']),
   customer.orderController.checkout
 );
+router.post(
+  '/payments/confirm',
+  validateBody(['orderId', 'paymentId', 'signature']),
+  customer.orderController.confirmPayment
+);
 router.get('/orders', customer.orderController.listOrders);
 router.get('/orders/:id', customer.orderController.getOrder);
 router.get('/orders/:id/track', customer.orderController.trackOrder);
@@ -34,6 +39,19 @@ router.patch('/notifications/read-all', customer.notificationController.markAllR
 router.post('/inquiries', customer.inquiryController.createInquiry);
 router.get('/wallet', customer.walletController.getWallet);
 router.post('/wallet/topup', customer.walletController.topUpWallet);
+router.post('/wallet/topup/confirm', customer.walletController.confirmTopUp);
 router.get('/orders/:id/invoice', customer.orderController.getInvoice);
+router.get('/refunds', customer.refundController.listRefunds);
+router.post(
+  '/refunds',
+  validateBody(['orderId', 'reason']),
+  customer.refundController.createRefund
+);
+router.get('/disputes', customer.disputeController.listDisputes);
+router.post(
+  '/disputes',
+  validateBody(['description']),
+  customer.disputeController.createDispute
+);
 
 module.exports = router;

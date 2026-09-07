@@ -43,7 +43,7 @@ export function CheckoutForm() {
 
     setIsSubmitting(true);
     try {
-      const orders = await orderService.checkout(
+      const { orders, payment: gatewayPayment } = await orderService.checkout(
         {
           shippingAddress: shippingAddress.trim(),
           phone: phone.trim(),
@@ -60,7 +60,11 @@ export function CheckoutForm() {
         token
       );
 
-      const payment = await paymentService.processPayment(paymentMethod, orders);
+      const payment = await paymentService.processPayment(
+        paymentMethod,
+        orders,
+        (gatewayPayment?.gateway as Array<Record<string, unknown>>) || undefined
+      );
       clearCart();
 
       const params = new URLSearchParams({
@@ -70,7 +74,7 @@ export function CheckoutForm() {
       });
 
       toast({
-        title: payment.status === 'success' ? 'Order placed' : 'Processing payment',
+        title: payment.status === 'success' ? 'Order placed' : 'Order created',
         description: payment.message,
         variant: payment.status === 'failed' ? 'error' : 'success',
       });

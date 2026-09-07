@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { AuthSocialOptions } from '@/components/auth/AuthSocialOptions';
+import { PasswordField } from '@/components/auth/PasswordField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/features/auth';
@@ -15,19 +16,29 @@ import { cn } from '@/lib/utils';
 
 export function RegisterForm({ className }: { className?: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { register } = useAuth();
 
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(searchParams.get('email') || '');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'customer' | 'vendor'>('customer');
   const [error, setError] = useState<string | null>(null);
+  const [emailExists, setEmailExists] = useState(false);
   const [pending, setPending] = useState(false);
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
+    setEmailExists(false);
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setPending(true);
 
     try {
@@ -42,16 +53,23 @@ export function RegisterForm({ className }: { className?: string }) {
         return;
       }
 
-      await register({
+      const res = await register({
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim() || undefined,
         password,
         role: 'customer',
       });
-      router.push('/');
-      router.refresh();
+      const params = new URLSearchParams({
+        registered: '1',
+        email: email.trim(),
+      });
+      if (res?.devOtp) params.set('devOtp', res.devOtp);
+      router.push(`/verify-email?${params.toString()}`);
+      return;
     } catch (err) {
+      const exists = err instanceof ApiError && (err.status === 409 || err.code === 'EMAIL_EXISTS');
+      setEmailExists(exists);
       setError(err instanceof ApiError ? err.message : 'Unable to create account');
     } finally {
       setPending(false);
@@ -129,21 +147,44 @@ export function RegisterForm({ className }: { className?: string }) {
           className="h-12 rounded-xl border-neutral-300 bg-white text-base shadow-none focus-visible:ring-neutral-900"
         />
 
-        <Input
+        <PasswordField
           id="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={6}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
+          autoComplete="new-password"
+          minLength={6}
           placeholder="Password (at least 6 characters)"
-          className="h-12 rounded-xl border-neutral-300 bg-white text-base shadow-none focus-visible:ring-neutral-900"
+        />
+        <PasswordField
+          id="confirmPassword"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          autoComplete="new-password"
+          minLength={6}
+          placeholder="Confirm password"
         />
 
         {error && (
           <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
+          </p>
+        )}
+
+        {emailExists && (
+          <p className="text-sm text-neutral-600">
+            <Link
+              href={`/login?email=${encodeURIComponent(email.trim())}`}
+              className="font-medium text-primary underline underline-offset-2"
+            >
+              Sign in
+            </Link>
+            {' · '}
+            <Link
+              href={`/forgot-password?email=${encodeURIComponent(email.trim())}`}
+              className="font-medium text-primary underline underline-offset-2"
+            >
+              Reset password
+            </Link>
           </p>
         )}
 
@@ -165,7 +206,7 @@ export function RegisterForm({ className }: { className?: string }) {
         </Button>
       </form>
 
-      <AuthSocialOptions />
+      <AuthSocialOptions onGoogleSuccess={() => router.push('/')} />
 
       <p className="pt-1 text-center text-sm text-neutral-600">
         Already have a {APP_NAME} account?{' '}

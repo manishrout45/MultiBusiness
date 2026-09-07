@@ -52,8 +52,9 @@ export function defaultThemeForSlug(slug: string): string {
 /** Merge home popular categories with API data (colors + ids from admin). */
 export function buildDisplayCategories(apiCategories: CategoryDto[]): DisplayCategory[] {
   const bySlug = new Map(apiCategories.map((c) => [c.slug, c]));
+  const popularSlugs = new Set(POPULAR_CATEGORIES.map((c) => c.slug));
 
-  return POPULAR_CATEGORIES.map((popular) => {
+  const fromPopular = POPULAR_CATEGORIES.map((popular) => {
     const api = bySlug.get(popular.slug);
     return {
       ...popular,
@@ -63,6 +64,21 @@ export function buildDisplayCategories(apiCategories: CategoryDto[]): DisplayCat
       themeColor: normalizeHexColor(api?.themeColor ?? defaultThemeForSlug(popular.slug)),
     };
   });
+
+  const fromAdminOnly = apiCategories
+    .filter((c) => !popularSlugs.has(c.slug))
+    .map((api) => ({
+      slug: api.slug,
+      name: api.name,
+      keywords: [api.name.toLowerCase(), api.slug.replace(/-/g, ' ')],
+      icon: iconForCategory(api.slug),
+      id: api.id,
+      description: api.description,
+      businessCount: api.businessCount,
+      themeColor: normalizeHexColor(api.themeColor ?? defaultThemeForSlug(api.slug)),
+    }));
+
+  return [...fromPopular, ...fromAdminOnly];
 }
 
 export function findDisplayCategory(

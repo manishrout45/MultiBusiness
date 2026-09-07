@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 import { APP_NAME } from '@/lib/constants';
 
@@ -16,7 +16,9 @@ export default function RegisterPage() {
             Create an account to shop local or sell your products.
           </p>
         </div>
-        <RegisterForm />
+        <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+          <RegisterForm />
+        </Suspense>
       </div>
     </div>
   );

@@ -21,8 +21,15 @@ const searchBusinesses = async (req, res, next) => {
 
 const getBusiness = async (req, res, next) => {
   try {
-    const business = await Business.findById(req.params.id);
-    if (!business || business.status !== 'approved') {
+    const key = req.params.id;
+    const [byId] = await db.query(
+      `SELECT * FROM businesses
+       WHERE status = 'approved' AND (id = ? OR slug = ?)
+       LIMIT 1`,
+      [key, key]
+    );
+    const business = byId[0];
+    if (!business) {
       return res.status(404).json({ message: 'Business not found' });
     }
 
@@ -35,6 +42,16 @@ const getBusiness = async (req, res, next) => {
       'SELECT * FROM business_gallery WHERE business_id = ? ORDER BY created_at DESC',
       [business.id]
     );
+    const [products] = await db.query(
+      `SELECT p.*, c.name AS category_name, c.slug AS category_slug,
+              (SELECT pi.file_path FROM product_images pi
+                WHERE pi.product_id = p.id ORDER BY pi.sort_order ASC LIMIT 1) AS image_url
+       FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE p.business_id = ? AND p.status = 'published'
+       ORDER BY p.created_at DESC`,
+      [business.id]
+    );
 
     res.json({
       data: {
@@ -42,6 +59,7 @@ const getBusiness = async (req, res, next) => {
         avg_rating: reviews[0]?.avg_rating || 0,
         review_count: reviews[0]?.review_count || 0,
         gallery,
+        products,
         directionsUrl: directionsUrl(business.latitude, business.longitude),
         embedUrl: embedUrl(
           business.latitude,
@@ -57,8 +75,28 @@ const getBusiness = async (req, res, next) => {
 
 const getBusinessProducts = async (req, res, next) => {
   try {
-    const products = await Product.findByBusiness(req.params.id);
-    res.json({ data: products.filter((p) => p.status === 'published') });
+    const key = req.params.id;
+    const [bizRows] = await db.query(
+      `SELECT id FROM businesses
+       WHERE status = 'approved' AND (id = ? OR slug = ?)
+       LIMIT 1`,
+      [key, key]
+    );
+    if (!bizRows[0]) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
+
+    const [products] = await db.query(
+      `SELECT p.*, c.name AS category_name, c.slug AS category_slug,
+              (SELECT pi.file_path FROM product_images pi
+                WHERE pi.product_id = p.id ORDER BY pi.sort_order ASC LIMIT 1) AS image_url
+       FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE p.business_id = ? AND p.status = 'published'
+       ORDER BY p.created_at DESC`,
+      [bizRows[0].id]
+    );
+    res.json({ data: products });
   } catch (err) {
     next(err);
   }

@@ -40,7 +40,43 @@ const updateCommission = async (req, res, next) => {
   }
 };
 
+const earningsReport = async (req, res, next) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT b.id,
+              b.business_name AS vendorName,
+              COUNT(o.id) AS orderCount,
+              COALESCE(SUM(o.total_amount), 0) AS grossSales,
+              COALESCE(SUM(o.commission_amount), 0) AS commissionAmount,
+              COALESCE(SUM(o.total_amount - o.commission_amount), 0) AS vendorPayout
+       FROM businesses b
+       LEFT JOIN orders o
+         ON o.business_id = b.id
+        AND o.order_status NOT IN ('cancelled')
+        AND MONTH(o.created_at) = MONTH(CURRENT_DATE())
+        AND YEAR(o.created_at) = YEAR(CURRENT_DATE())
+       GROUP BY b.id, b.business_name
+       HAVING orderCount > 0
+       ORDER BY commissionAmount DESC`
+    );
+    res.json({
+      data: rows.map((r) => ({
+        id: String(r.id),
+        vendorName: r.vendorName,
+        orderCount: Number(r.orderCount) || 0,
+        grossSales: Number(r.grossSales) || 0,
+        commissionAmount: Number(r.commissionAmount) || 0,
+        vendorPayout: Number(r.vendorPayout) || 0,
+        period: 'This month',
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   listCommissions,
   updateCommission,
+  earningsReport,
 };

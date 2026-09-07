@@ -14,8 +14,9 @@ import {
   type AuthUser,
   type LoginInput,
   type RegisterInput,
+  type RegisterResponse,
 } from '@/features/auth/types';
-import { fetchMe, loginRequest, registerRequest } from '@/services/authService';
+import { fetchMe, googleLoginRequest, loginRequest, registerRequest, verifyPhoneOtpRequest } from '@/services/authService';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -23,7 +24,9 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (input: LoginInput) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
+  loginWithPhone: (phone: string, code: string) => Promise<void>;
+  register: (input: RegisterInput) => Promise<RegisterResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -71,7 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (stored.token) {
       fetchMe(stored.token)
         .then((profile) => {
-          const nextUser = (profile.data ?? profile) as AuthUser;
+          const raw = profile as { user?: AuthUser; data?: AuthUser } & AuthUser;
+          const nextUser = (raw.user ?? raw.data ?? raw) as AuthUser;
           if (nextUser?.id) {
             setUser(nextUser);
             localStorage.setItem(AUTH_USER_KEY, JSON.stringify(nextUser));
@@ -92,11 +96,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(result.user);
   }, []);
 
-  const register = useCallback(async (input: RegisterInput) => {
-    const result = await registerRequest(input);
+  const loginWithGoogle = useCallback(async (idToken: string) => {
+    const result = await googleLoginRequest(idToken);
     persistAuth(result.token, result.user);
     setToken(result.token);
     setUser(result.user);
+  }, []);
+
+  const loginWithPhone = useCallback(async (phone: string, code: string) => {
+    const result = await verifyPhoneOtpRequest(phone, code);
+    persistAuth(result.token, result.user);
+    setToken(result.token);
+    setUser(result.user);
+  }, []);
+
+  const register = useCallback(async (input: RegisterInput) => {
+    return registerRequest(input);
   }, []);
 
   const logout = useCallback(() => {
@@ -108,7 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = useCallback(async () => {
     if (!token) return;
     const profile = await fetchMe(token);
-    const nextUser = (profile.data ?? profile) as AuthUser;
+    const raw = profile as { user?: AuthUser; data?: AuthUser } & AuthUser;
+    const nextUser = (raw.user ?? raw.data ?? raw) as AuthUser;
     setUser(nextUser);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(nextUser));
   }, [token]);
@@ -120,11 +136,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: Boolean(token && user),
       isLoading,
       login,
+      loginWithGoogle,
+      loginWithPhone,
       register,
       logout,
       refreshProfile,
     }),
-    [user, token, isLoading, login, register, logout, refreshProfile]
+    [user, token, isLoading, login, loginWithGoogle, loginWithPhone, register, logout, refreshProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

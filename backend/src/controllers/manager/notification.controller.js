@@ -1,7 +1,10 @@
 ﻿const db = require('../../config/db');
 const {
   createNotification,
+  notifyUsersByRoles,
   getUserNotifications,
+  markAsRead,
+  markAllAsRead,
 } = require('../../services/notification.service');
 
 const listNotifications = async (req, res, next) => {
@@ -44,7 +47,27 @@ const sendNotification = async (req, res, next) => {
   }
 };
 
+const markRead = async (req, res, next) => {
+  try {
+    await markAsRead(req.user.id, req.params.id);
+    res.json({ message: 'Marked as read' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const markAllRead = async (req, res, next) => {
+  try {
+    await markAllAsRead(req.user.id);
+    res.json({ message: 'All notifications marked as read' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   listNotifications,
   sendNotification,
+  markRead,
+  markAllRead,
 };

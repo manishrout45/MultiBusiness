@@ -45,6 +45,10 @@ router.get('/analytics', vendor.analyticsController.getAnalytics);
 router.get('/sales-reports', vendor.reportController.salesReports);
 router.get('/subscription', vendor.subscriptionController.getSubscription);
 router.post('/subscription', vendor.subscriptionController.subscribe);
+router.post(
+  '/subscription/confirm',
+  vendor.subscriptionController.confirmSubscription
+);
 router.get('/memberships', vendor.membershipController.listPlans);
 router.post('/memberships', requireApprovedVendor, vendor.membershipController.createPlan);
 router.get('/notifications', vendor.notificationController.listNotifications);

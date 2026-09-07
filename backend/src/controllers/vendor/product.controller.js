@@ -1,6 +1,7 @@
 ﻿const db = require('../../config/db');
 const Business = require('../../models/Business');
 const Product = require('../../models/Product');
+const { notifyUsersByRoles } = require('../../services/notification.service');
 
 const requireOwnedBusiness = async (userId) => {
   const business = await Business.findByOwner(userId);
@@ -54,6 +55,15 @@ const createProduct = async (req, res, next) => {
     });
 
     const product = await Product.findById(id);
+
+    await notifyUsersByRoles({
+      roles: ['super_admin', 'business_manager'],
+      title: 'New product pending review',
+      message: `${business.business_name || 'A vendor'} added “${name}”`,
+      type: 'product',
+      link: '/admin/dashboard#vendors',
+    });
+
     res.status(201).json({ message: 'Product created', data: product });
   } catch (err) {
     next(err);

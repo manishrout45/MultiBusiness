@@ -87,13 +87,27 @@ export function MarketplaceNavbar() {
                 <Link
                   href={profileHref}
                   className="flex items-center gap-2 rounded-full hover:opacity-90"
-                  aria-label="Profile"
+                  aria-label={`${user.name} ${user.email}`}
                 >
-                  <span className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                    {user.name.charAt(0).toUpperCase()}
-                  </span>
-                  <span className="hidden max-w-[88px] truncate text-sm font-semibold xl:inline">
-                    {user.name.split(' ')[0]}
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      referrerPolicy="no-referrer"
+                      className="size-9 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                      {(user.name || user.email || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="hidden min-w-0 flex-col leading-tight xl:flex">
+                    <span className="max-w-[110px] truncate text-sm font-semibold">
+                      {user.name.split(' ')[0]}
+                    </span>
+                    <span className="max-w-[130px] truncate text-[10px] text-muted-foreground">
+                      {user.email}
+                    </span>
                   </span>
                 </Link>
                 <Button variant="ghost" size="sm" className="hidden lg:inline-flex" onClick={logout}>

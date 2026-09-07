@@ -1,4 +1,4 @@
-// Notification service — in-app + push stubs
+// Notification service — in-app + optional role broadcast
 const db = require('../config/db');
 
 const createNotification = async ({ userId, title, message, type = 'info', link = null }) => {
@@ -8,6 +8,35 @@ const createNotification = async ({ userId, title, message, type = 'info', link 
     [userId, title, message, type, link]
   );
   return result.insertId;
+};
+
+const notifyUsersByRoles = async ({
+  roles = [],
+  title,
+  message,
+  type = 'info',
+  link = null,
+  limit = 500,
+}) => {
+  if (!roles.length) return 0;
+  const placeholders = roles.map(() => '?').join(',');
+  const [users] = await db.query(
+    `SELECT id FROM users
+     WHERE role IN (${placeholders}) AND status = 'active'
+     ORDER BY id DESC
+     LIMIT ?`,
+    [...roles, Number(limit)]
+  );
+  for (const user of users) {
+    await createNotification({
+      userId: user.id,
+      title,
+      message,
+      type,
+      link,
+    });
+  }
+  return users.length;
 };
 
 const getUserNotifications = async (userId, limit = 50) => {
@@ -36,6 +65,7 @@ const markAllAsRead = async (userId) => {
 
 module.exports = {
   createNotification,
+  notifyUsersByRoles,
   getUserNotifications,
   markAsRead,
   markAllAsRead,

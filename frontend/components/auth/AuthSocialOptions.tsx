@@ -1,5 +1,9 @@
+import { useEffect, useRef } from 'react';
 import { Phone } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { useAuth } from '@/features/auth';
+import { ApiError } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -24,14 +28,123 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-/** Email-card social options: Call + Google only (no WhatsApp / Apple yet). */
-export function AuthSocialOptions() {
-  const { toast } = useToast();
+function getGoogleClientId() {
+  return process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '';
+}
 
-  const comingSoon = (label: string) => {
+function loadGoogleScript(): Promise<void> {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-google-gsi]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('Google script failed')));
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleGsi = 'true';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Google script failed'));
+    document.head.appendChild(script);
+  });
+}
+
+const socialBtnClass =
+  'flex h-12 w-full items-center justify-center rounded-xl border border-neutral-300 bg-white transition hover:bg-neutral-50';
+
+interface AuthSocialOptionsProps {
+  onGoogleSuccess?: () => void;
+  onError?: (message: string) => void;
+  onPhoneClick?: () => void;
+  hidePhone?: boolean;
+}
+
+export function AuthSocialOptions({
+  onGoogleSuccess,
+  onError,
+  onPhoneClick,
+  hidePhone = false,
+}: AuthSocialOptionsProps) {
+  const { toast } = useToast();
+  const { loginWithGoogle } = useAuth();
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+  const successRef = useRef(onGoogleSuccess);
+  const errorRef = useRef(onError);
+  successRef.current = onGoogleSuccess;
+  errorRef.current = onError;
+
+  useEffect(() => {
+    const clientId = getGoogleClientId();
+    if (!clientId) return;
+
+    let cancelled = false;
+
+    const handleCredential = async (response: { credential: string }) => {
+      try {
+        await loginWithGoogle(response.credential);
+        successRef.current?.();
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : 'Google sign-in failed';
+        errorRef.current?.(message);
+        toast({ title: 'Google sign-in', description: message, variant: 'error' });
+      }
+    };
+
+    (async () => {
+      try {
+        await loadGoogleScript();
+        if (cancelled || !googleBtnRef.current || !window.google?.accounts?.id) return;
+
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          context: 'signin',
+          ux_mode: 'popup',
+          callback: handleCredential,
+        });
+
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          type: 'icon',
+          theme: 'outline',
+          size: 'large',
+          shape: 'square',
+        });
+      } catch {
+        if (!cancelled) {
+          toast({
+            title: 'Google sign-in',
+            description: 'Could not load Google. Check your Client ID and restart the app.',
+            variant: 'error',
+          });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loginWithGoogle, toast]);
+
+  const onPhone = () => {
+    if (onPhoneClick) {
+      onPhoneClick();
+      return;
+    }
     toast({
-      title: `${label} sign-in`,
-      description: 'This option will be available soon.',
+      title: 'Phone sign-in',
+      description: 'Use email and password for now. Phone login will follow.',
+    });
+  };
+
+  const onGoogleMissing = () => {
+    toast({
+      title: 'Google sign-in',
+      description: 'Add NEXT_PUBLIC_GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID in .env, then restart.',
     });
   };
 
@@ -43,23 +156,29 @@ export function AuthSocialOptions() {
         <div className="h-px flex-1 bg-neutral-200" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          aria-label="Continue with phone call"
-          onClick={() => comingSoon('Call')}
-          className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 bg-white transition hover:bg-neutral-50"
-        >
-          <Phone className="size-5 text-emerald-600" strokeWidth={2.25} />
-        </button>
-        <button
-          type="button"
-          aria-label="Continue with Google"
-          onClick={() => comingSoon('Google')}
-          className="flex h-12 items-center justify-center rounded-xl border border-neutral-300 bg-white transition hover:bg-neutral-50"
-        >
-          <GoogleIcon className="size-5" />
-        </button>
+      <div className={cn('grid gap-3', hidePhone ? 'grid-cols-1' : 'grid-cols-2')}>
+        {!hidePhone && (
+          <button type="button" aria-label="Continue with phone" onClick={onPhone} className={socialBtnClass}>
+            <Phone className="size-5 text-primary" strokeWidth={2.25} />
+          </button>
+        )}
+
+        {getGoogleClientId() ? (
+          <div className="relative h-12 w-full">
+            <div className={`${socialBtnClass} pointer-events-none`} aria-hidden>
+              <GoogleIcon className="size-5" />
+            </div>
+            <div
+              ref={googleBtnRef}
+              className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 opacity-0"
+              aria-label="Sign in with Google"
+            />
+          </div>
+        ) : (
+          <button type="button" aria-label="Sign in with Google" onClick={onGoogleMissing} className={socialBtnClass}>
+            <GoogleIcon className="size-5" />
+          </button>
+        )}
       </div>
     </div>
   );

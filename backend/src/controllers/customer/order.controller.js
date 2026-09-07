@@ -2,9 +2,13 @@
 const db = require('../../config/db');
 const Cart = require('../../models/Cart');
 const Order = require('../../models/Order');
-const { calculateCommission } = require('../../services/commission.service');
-const { createNotification } = require('../../services/notification.service');
-const { createPaymentOrder } = require('../../services/payment.service');
+const { calculateCommissionForBusiness } = require('../../services/commission.service');
+const { createNotification, notifyUsersByRoles } = require('../../services/notification.service');
+const {
+  createPaymentOrder,
+  verifyPayment,
+  isPaymentConfigured,
+} = require('../../services/payment.service');
 const { debitWallet } = require('../../services/monetization.service');
 const { buildInvoiceHtml } = require('../../utils/invoice');
 const { sendEmail } = require('../../services/email.service');
@@ -26,6 +30,14 @@ const checkout = async (req, res, next) => {
     if (!PAYMENT_METHODS.includes(paymentMethod)) {
       return res.status(400).json({
         message: `paymentMethod must be one of: ${PAYMENT_METHODS.join(', ')}`,
+      });
+    }
+
+    const needsGateway = !['cod', 'wallet'].includes(paymentMethod);
+    if (needsGateway && !isPaymentConfigured()) {
+      return res.status(501).json({
+        message:
+          'Online payment is not configured. Use paymentMethod "cod" or "wallet", or set PAYMENT_GATEWAY_KEY and PAYMENT_GATEWAY_SECRET.',
       });
     }
 
@@ -74,15 +86,19 @@ const checkout = async (req, res, next) => {
       grouped[businessId].items.push(item);
     }
 
-    const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'paid';
+    const paymentStatus = paymentMethod === 'wallet' ? 'paid' : 'pending';
     const createdOrders = [];
+    const gatewayPayments = [];
 
     for (const group of Object.values(grouped)) {
       const totalAmount = group.items.reduce((sum, item) => {
         return sum + getUnitPrice(item) * Number(item.quantity);
       }, 0);
       const roundedTotal = Math.round(totalAmount * 100) / 100;
-      const { commissionAmount } = calculateCommission(roundedTotal);
+      const { commissionAmount } = await calculateCommissionForBusiness(
+        roundedTotal,
+        group.businessId
+      );
       const orderNumber = `ORD-${Date.now()}-${uuidv4().slice(0, 8)}`;
 
       const orderId = await Order.create({
@@ -125,10 +141,22 @@ const checkout = async (req, res, next) => {
       );
 
       if (paymentMethod !== 'cod' && paymentMethod !== 'wallet') {
-        await createPaymentOrder({
+        const gateway = await createPaymentOrder({
           amount: roundedTotal,
           orderId: orderNumber,
           customer: { id: req.user.id },
+        });
+        if (gateway.gatewayOrderId) {
+          await db.query(
+            `UPDATE payments SET gateway_payment_id = ?, gateway_response = ? WHERE order_id = ?`,
+            [gateway.gatewayOrderId, JSON.stringify(gateway.raw || gateway), orderId]
+          );
+        }
+        gatewayPayments.push({
+          orderId,
+          orderNumber,
+          amount: roundedTotal,
+          ...gateway,
         });
       }
 
@@ -138,6 +166,22 @@ const checkout = async (req, res, next) => {
         message: `Order ${orderNumber} for ${group.businessName} — ₹${roundedTotal}`,
         type: 'order',
         link: `/vendor/orders/${orderId}`,
+      });
+
+      await createNotification({
+        userId: req.user.id,
+        title: 'Order placed',
+        message: `Your order ${orderNumber} was placed successfully — ₹${roundedTotal}`,
+        type: 'order',
+        link: `/orders/${orderId}`,
+      });
+
+      await notifyUsersByRoles({
+        roles: ['super_admin', 'business_manager'],
+        title: 'New marketplace order',
+        message: `Order ${orderNumber} at ${group.businessName} — ₹${roundedTotal}`,
+        type: 'order',
+        link: '/admin/dashboard#orders',
       });
 
       const order = await Order.findById(orderId);
@@ -171,9 +215,65 @@ const checkout = async (req, res, next) => {
     });
 
     res.status(201).json({
-      message: 'Checkout successful',
+      message:
+        paymentMethod === 'cod'
+          ? 'Order placed. Pay on delivery.'
+          : paymentMethod === 'wallet'
+            ? 'Order paid with wallet.'
+            : 'Order created. Complete online payment, then call /customer/payments/confirm.',
       data: createdOrders,
+      payment: {
+        status: paymentStatus,
+        method: paymentMethod,
+        gateway: gatewayPayments,
+      },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const confirmPayment = async (req, res, next) => {
+  try {
+    const { orderId, paymentId, signature, gatewayOrderId } = req.body;
+    if (!orderId || !paymentId || !signature) {
+      return res.status(400).json({
+        message: 'orderId, paymentId, and signature are required',
+      });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order || Number(order.customer_id) !== Number(req.user.id)) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    if (order.payment_status === 'paid') {
+      return res.json({ message: 'Already paid', data: order });
+    }
+
+    const [payRows] = await db.query(
+      'SELECT gateway_payment_id FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1',
+      [order.id]
+    );
+    const razorpayOrderId = gatewayOrderId || payRows[0]?.gateway_payment_id || order.order_number;
+
+    const result = await verifyPayment({
+      paymentId,
+      orderId: razorpayOrderId,
+      signature,
+    });
+    if (!result.verified) {
+      return res.status(400).json({ message: result.message || 'Payment verification failed' });
+    }
+
+    await db.query(`UPDATE orders SET payment_status = 'paid' WHERE id = ?`, [order.id]);
+    await db.query(
+      `UPDATE payments SET status = 'success', gateway_payment_id = ?, gateway_response = ?
+       WHERE order_id = ?`,
+      [paymentId, JSON.stringify(result), order.id]
+    );
+
+    const updated = await Order.findById(order.id);
+    res.json({ message: 'Payment confirmed', data: updated });
   } catch (err) {
     next(err);
   }
@@ -270,6 +370,7 @@ const getInvoice = async (req, res, next) => {
 
 module.exports = {
   checkout,
+  confirmPayment,
   listOrders,
   getOrder,
   trackOrder,
