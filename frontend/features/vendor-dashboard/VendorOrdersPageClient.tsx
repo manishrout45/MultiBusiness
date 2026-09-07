@@ -18,6 +18,9 @@ interface VendorOrder {
   orderNumber: string;
   status: string;
   total: number;
+  subtotal?: number;
+  deliveryFee?: number;
+  platformFee?: number;
   customerName?: string;
   createdAt: string;
 }
@@ -30,6 +33,7 @@ const STATUS_FLOW: Record<string, { next: string; label: string } | null> = {
   shipped: { next: 'delivered', label: 'Mark delivered' },
   delivered: null,
   cancelled: null,
+  returned: null,
 };
 
 function VendorOrdersContent() {
@@ -50,6 +54,9 @@ function VendorOrdersContent() {
           order_status?: string;
           status?: string;
           total_amount?: number;
+          subtotal_amount?: number;
+          delivery_fee?: number;
+          platform_fee?: number;
           customer_name?: string;
           created_at: string;
         }>;
@@ -60,6 +67,9 @@ function VendorOrdersContent() {
           orderNumber: o.order_number,
           status: o.order_status || o.status || 'placed',
           total: Number(o.total_amount ?? 0),
+          subtotal: o.subtotal_amount != null ? Number(o.subtotal_amount) : undefined,
+          deliveryFee: o.delivery_fee != null ? Number(o.delivery_fee) : undefined,
+          platformFee: o.platform_fee != null ? Number(o.platform_fee) : undefined,
           customerName: o.customer_name,
           createdAt: o.created_at,
         }))
@@ -128,6 +138,17 @@ function VendorOrdersContent() {
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 {order.customerName || 'Customer'} · ₹{order.total.toLocaleString()}
+                {(order.deliveryFee != null || order.platformFee != null) && (
+                  <span className="block text-xs">
+                    {order.subtotal != null && `Items ₹${order.subtotal.toLocaleString()}`}
+                    {order.deliveryFee != null && order.deliveryFee > 0
+                      ? ` · Delivery ₹${order.deliveryFee}`
+                      : ''}
+                    {order.platformFee != null && order.platformFee > 0
+                      ? ` · Platform ₹${order.platformFee}`
+                      : ''}
+                  </span>
+                )}
               </p>
               <p className="text-xs text-muted-foreground">
                 {new Date(order.createdAt).toLocaleString()}
@@ -143,7 +164,19 @@ function VendorOrdersContent() {
                   {action.label}
                 </Button>
               )}
-              {order.status !== 'cancelled' && order.status !== 'delivered' && (
+              {order.status === 'delivered' && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={busyId === order.id}
+                  onClick={() => void updateStatus(order.id, 'returned')}
+                >
+                  Mark returned
+                </Button>
+              )}
+              {order.status !== 'cancelled' &&
+                order.status !== 'delivered' &&
+                order.status !== 'returned' && (
                 <Button
                   size="sm"
                   variant="outline"

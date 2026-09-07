@@ -262,7 +262,10 @@ CREATE TABLE IF NOT EXISTS orders (
   customer_id INT UNSIGNED NOT NULL,
   business_id INT UNSIGNED NOT NULL,
   total_amount DECIMAL(12, 2) NOT NULL,
+  subtotal_amount DECIMAL(12, 2) NULL,
   commission_amount DECIMAL(12, 2) DEFAULT 0,
+  delivery_fee DECIMAL(12, 2) NOT NULL DEFAULT 0,
+  platform_fee DECIMAL(12, 2) NOT NULL DEFAULT 0,
   payment_method ENUM('upi', 'credit_card', 'debit_card', 'net_banking', 'cod', 'wallet') NOT NULL,
   payment_status ENUM('pending', 'paid', 'failed', 'refunded') DEFAULT 'pending',
   order_status ENUM('placed', 'accepted', 'packed', 'shipped', 'delivered', 'cancelled', 'returned') DEFAULT 'placed',
@@ -286,6 +289,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   quantity INT NOT NULL,
   unit_price DECIMAL(12, 2) NOT NULL,
   total_price DECIMAL(12, 2) NOT NULL,
+  variation_id INT UNSIGNED NULL,
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES products(id)
 ) ENGINE=InnoDB;

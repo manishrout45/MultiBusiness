@@ -20,6 +20,7 @@ const STATUS_INDEX: Record<OrderStatus, number> = {
   shipped: 3,
   delivered: 4,
   cancelled: -1,
+  returned: -1,
 };
 
 interface OrderTimelineProps {
@@ -31,6 +32,14 @@ export function OrderTimeline({ status }: OrderTimelineProps) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
         This order was cancelled.
+      </div>
+    );
+  }
+
+  if (status === 'returned') {
+    return (
+      <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+        This order was returned. Stock has been restored.
       </div>
     );
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,13 @@ export function ProductForm({ open, onOpenChange, initial, onSubmit }: ProductFo
   const [variations, setVariations] = useState<ProductVariation[]>(initial?.variations ?? []);
   const [status, setStatus] = useState<Product['status']>(initial?.status ?? 'published');
 
+  const hasSizes = variations.length > 0;
+  const sizeStockTotal = variations.reduce((sum, v) => sum + Number(v.stock || 0), 0);
+
+  useEffect(() => {
+    if (hasSizes) setStock(String(sizeStockTotal));
+  }, [hasSizes, sizeStockTotal]);
+
   const resetFromInitial = () => {
     setName(initial?.name ?? '');
     setDescription(initial?.description ?? '');
@@ -66,7 +73,7 @@ export function ProductForm({ open, onOpenChange, initial, onSubmit }: ProductFo
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial ? 'Edit product' : 'Add product'}</DialogTitle>
         </DialogHeader>
@@ -76,18 +83,19 @@ export function ProductForm({ open, onOpenChange, initial, onSubmit }: ProductFo
           onSubmit={async (e) => {
             e.preventDefault();
             setPending(true);
+            const finalStock = hasSizes ? sizeStockTotal : Number(stock);
             try {
               await onSubmit({
                 name,
                 description,
                 price: Number(price),
                 salePrice: salePrice ? Number(salePrice) : null,
-                stock: Number(stock),
+                stock: finalStock,
                 category,
                 categorySlug,
                 images,
                 variations,
-                status: Number(stock) <= 0 ? 'out_of_stock' : status,
+                status: finalStock <= 0 ? 'out_of_stock' : status,
               });
               onOpenChange(false);
             } finally {
@@ -133,7 +141,7 @@ export function ProductForm({ open, onOpenChange, initial, onSubmit }: ProductFo
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="stock">Stock quantity</Label>
+              <Label htmlFor="stock">{hasSizes ? 'Total stock (from sizes)' : 'Stock quantity'}</Label>
               <Input
                 id="stock"
                 type="number"
@@ -141,6 +149,8 @@ export function ProductForm({ open, onOpenChange, initial, onSubmit }: ProductFo
                 value={stock}
                 onChange={(e) => setStock(e.target.value)}
                 required
+                readOnly={hasSizes}
+                disabled={hasSizes}
               />
             </div>
             <CategorySelector
@@ -156,20 +166,23 @@ export function ProductForm({ open, onOpenChange, initial, onSubmit }: ProductFo
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label>Variations</Label>
+              <div>
+                <Label>Sizes / variations</Label>
+                <p className="text-xs text-muted-foreground">Set stock per size (S, M, L…)</p>
+              </div>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => setVariations((v) => [...v, emptyVariation()])}
               >
-                <Plus /> Add
+                <Plus /> Add size
               </Button>
             </div>
             {variations.map((variation, index) => (
-              <div key={variation.id} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+              <div key={variation.id} className="grid grid-cols-[1fr_1fr_80px_auto] gap-2">
                 <Input
-                  placeholder="Name (Color)"
+                  placeholder="Name (Size)"
                   value={variation.name}
                   onChange={(e) => {
                     const next = [...variations];
@@ -178,11 +191,23 @@ export function ProductForm({ open, onOpenChange, initial, onSubmit }: ProductFo
                   }}
                 />
                 <Input
-                  placeholder="Value (Red)"
+                  placeholder="Value (M)"
                   value={variation.value}
                   onChange={(e) => {
                     const next = [...variations];
                     next[index] = { ...variation, value: e.target.value };
+                    setVariations(next);
+                  }}
+                  required={hasSizes}
+                />
+                <Input
+                  type="number"
+                  min={0}
+                  placeholder="Stock"
+                  value={String(variation.stock)}
+                  onChange={(e) => {
+                    const next = [...variations];
+                    next[index] = { ...variation, stock: Number(e.target.value) || 0 };
                     setVariations(next);
                   }}
                 />

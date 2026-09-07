@@ -33,12 +33,22 @@ const Order = {
   create: async (data) => {
     const [result] = await db.query(
       `INSERT INTO orders
-       (order_number, customer_id, business_id, total_amount, commission_amount,
+       (order_number, customer_id, business_id, total_amount, subtotal_amount,
+        commission_amount, delivery_fee, platform_fee,
         payment_method, payment_status, order_status, shipping_address, phone)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending', 'placed', ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'placed', ?, ?)`,
       [
-        data.orderNumber, data.customerId, data.businessId, data.totalAmount,
-        data.commissionAmount, data.paymentMethod, data.shippingAddress, data.phone,
+        data.orderNumber,
+        data.customerId,
+        data.businessId,
+        data.totalAmount,
+        data.subtotalAmount ?? data.totalAmount,
+        data.commissionAmount ?? 0,
+        data.deliveryFee ?? 0,
+        data.platformFee ?? 0,
+        data.paymentMethod,
+        data.shippingAddress,
+        data.phone,
       ]
     );
     return result.insertId;

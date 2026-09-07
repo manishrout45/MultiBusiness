@@ -89,6 +89,7 @@ export const ORDER_STATUSES = [
   'shipped',
   'delivered',
   'cancelled',
+  'returned',
 ] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
@@ -108,7 +109,7 @@ export function mapBackendOrderStatus(status: string): OrderStatus {
     shipped: 'shipped',
     delivered: 'delivered',
     cancelled: 'cancelled',
-    returned: 'cancelled',
+    returned: 'returned',
   };
   return map[status] ?? 'pending';
 }

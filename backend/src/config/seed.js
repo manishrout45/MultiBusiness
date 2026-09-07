@@ -152,7 +152,9 @@ async function seed() {
     ('default_commission', '5'),
     ('support_email', 'support@marketplace.com'),
     ('support_phone', '1800-000-0000'),
-    ('lead_fee', '50')
+    ('lead_fee', '50'),
+    ('delivery_fee', '40'),
+    ('platform_fee', '0')
     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
   `);
 

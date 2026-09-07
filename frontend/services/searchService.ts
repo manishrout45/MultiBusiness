@@ -72,9 +72,11 @@ export async function searchMarketplace(filters: SearchFilters = {}): Promise<Se
       title: String(row.name ?? 'Product'),
       subtitle: String(row.description ?? ''),
       category: String(row.category_name ?? 'Product'),
-      price: Number(row.price ?? 0),
-      imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
-      href: `/businesses?q=${encodeURIComponent(String(row.name ?? ''))}`,
+      price: Number(row.sale_price ?? row.price ?? 0),
+      imageUrl:
+        String(row.image_url || '') ||
+        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
+      href: `/products/${row.id}`,
     }));
 
     let data = [...businesses, ...products];

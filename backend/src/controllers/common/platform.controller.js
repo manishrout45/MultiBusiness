@@ -106,9 +106,24 @@ const getPublicAnnouncements = async (req, res, next) => {
   }
 };
 
+const getPublicFees = async (req, res, next) => {
+  try {
+    const map = await readSettingsMap(['delivery_fee', 'platform_fee']);
+    res.json({
+      data: {
+        deliveryFee: Number(map.delivery_fee ?? 40) || 0,
+        platformFee: Number(map.platform_fee ?? 0) || 0,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getPublicTheme,
   updateTheme,
   getPublicBanners,
   getPublicAnnouncements,
+  getPublicFees,
 };

@@ -32,9 +32,17 @@ export function CartSummary({
           <span>₹{totals.subtotal.toLocaleString()}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Delivery</span>
-          <span className="text-emerald-600">Free</span>
+          <span className="text-muted-foreground">Delivery fee</span>
+          <span>
+            {totals.deliveryFee > 0 ? `₹${totals.deliveryFee.toLocaleString()}` : 'Free'}
+          </span>
         </div>
+        {totals.platformFee > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Platform fee</span>
+            <span>₹{totals.platformFee.toLocaleString()}</span>
+          </div>
+        )}
         <div className="border-t border-border pt-3">
           <div className="flex justify-between text-base font-semibold">
             <span>Total</span>
@@ -42,7 +50,7 @@ export function CartSummary({
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Orders from multiple vendors may ship separately.
+          Fees apply per vendor when cart has multiple shops.
         </p>
       </CardContent>
       <CardFooter>

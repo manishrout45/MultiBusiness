@@ -20,6 +20,8 @@ interface AddToCartInput {
   image: string;
   price: number;
   quantity?: number;
+  variationId?: string | null;
+  variationLabel?: string | null;
 }
 
 interface CartContextValue {
@@ -39,12 +41,15 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
+  const [fees, setFees] = useState({ deliveryFee: 40, platformFee: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
     try {
+      const nextFees = await cartService.fetchCheckoutFees();
+      setFees(nextFees);
       const { items: next } = await cartService.getCart(token);
       setItems(next);
     } finally {
@@ -101,7 +106,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
   }, []);
 
-  const totals = useMemo(() => cartService.calcTotals(items), [items]);
+  const totals = useMemo(() => cartService.calcTotals(items, fees), [items, fees]);
 
   const value = useMemo(
     () => ({

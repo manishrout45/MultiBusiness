@@ -13,6 +13,7 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
   shipped: 'bg-indigo-100 text-indigo-900 border-indigo-200',
   delivered: 'bg-emerald-100 text-emerald-900 border-emerald-200',
   cancelled: 'bg-red-100 text-red-900 border-red-200',
+  returned: 'bg-orange-100 text-orange-900 border-orange-200',
 };
 
 interface OrderStatusBadgeProps {

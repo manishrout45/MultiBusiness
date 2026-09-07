@@ -37,6 +37,7 @@ router.get('/categories/:slug', common.categoryController.getCategory);
 router.get('/featured', common.businessController.featuredBusinesses);
 router.get('/offers', common.offerController.publicOffers);
 router.get('/theme', common.platformController.getPublicTheme);
+router.get('/fees', common.platformController.getPublicFees);
 router.get('/banners', common.platformController.getPublicBanners);
 router.get('/announcements', common.platformController.getPublicAnnouncements);
 router.get('/reviews', common.reviewController.listBusinessReviews);

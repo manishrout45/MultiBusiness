@@ -2,11 +2,26 @@ const db = require('../../config/db');
 const Cart = require('../../models/Cart');
 const Product = require('../../models/Product');
 
+const resolveStock = async (product, variationId) => {
+  if (!variationId) return Number(product.stock);
+  const [rows] = await db.query(
+    'SELECT stock FROM product_variations WHERE id = ? AND product_id = ?',
+    [variationId, product.id]
+  );
+  if (!rows[0]) {
+    const err = new Error('Invalid size/variation for this product');
+    err.statusCode = 400;
+    throw err;
+  }
+  return Number(rows[0].stock);
+};
+
 const getCart = async (req, res, next) => {
   try {
     const items = await Cart.getItems(req.user.id);
     const total = items.reduce((sum, item) => {
-      const unitPrice = item.sale_price != null ? Number(item.sale_price) : Number(item.price);
+      const base = item.sale_price != null ? Number(item.sale_price) : Number(item.price);
+      const unitPrice = base + Number(item.price_adjustment || 0);
       return sum + unitPrice * Number(item.quantity);
     }, 0);
     res.json({ data: items, total: Math.round(total * 100) / 100 });
@@ -19,6 +34,7 @@ const addToCart = async (req, res, next) => {
   try {
     const productId = Number(req.body.productId);
     const quantity = Number(req.body.quantity) || 1;
+    const variationId = req.body.variationId != null ? Number(req.body.variationId) : null;
     if (!productId) {
       return res.status(400).json({ message: 'productId is required' });
     }
@@ -29,10 +45,20 @@ const addToCart = async (req, res, next) => {
     if (!product || product.status !== 'published') {
       return res.status(404).json({ message: 'Product not found' });
     }
-    if (product.stock < quantity) {
+
+    const [variations] = await db.query(
+      'SELECT id FROM product_variations WHERE product_id = ?',
+      [productId]
+    );
+    if (variations.length && !variationId) {
+      return res.status(400).json({ message: 'Select a size/variation' });
+    }
+
+    const available = await resolveStock(product, variationId);
+    if (available < quantity) {
       return res.status(400).json({ message: 'Insufficient stock' });
     }
-    await Cart.addItem(req.user.id, productId, quantity);
+    await Cart.addItem(req.user.id, productId, quantity, variationId);
     const items = await Cart.getItems(req.user.id);
     res.status(201).json({ message: 'Added to cart', data: items });
   } catch (err) {
@@ -61,7 +87,8 @@ const updateCartItem = async (req, res, next) => {
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
-    if (product.stock < quantity) {
+    const available = await resolveStock(product, rows[0].variation_id);
+    if (available < quantity) {
       return res.status(400).json({ message: 'Insufficient stock' });
     }
     await Cart.updateItem(itemId, quantity);
@@ -98,4 +125,3 @@ module.exports = {
   updateCartItem,
   removeFromCart,
 };
-

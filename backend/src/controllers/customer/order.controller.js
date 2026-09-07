@@ -9,15 +9,34 @@ const {
   verifyPayment,
   isPaymentConfigured,
 } = require('../../services/payment.service');
-const { debitWallet } = require('../../services/monetization.service');
+const { debitWallet, getSetting } = require('../../services/monetization.service');
 const { buildInvoiceHtml } = require('../../utils/invoice');
 const { sendEmail } = require('../../services/email.service');
 const { sendSMS } = require('../../services/sms.service');
 
 const PAYMENT_METHODS = ['upi', 'credit_card', 'debit_card', 'net_banking', 'cod', 'wallet'];
 
-const getUnitPrice = (item) =>
-  item.sale_price != null ? Number(item.sale_price) : Number(item.price);
+const getUnitPrice = (item) => {
+  const base = item.sale_price != null ? Number(item.sale_price) : Number(item.price);
+  return base + Number(item.price_adjustment || 0);
+};
+
+const decrementStock = async (productId, quantity, variationId = null) => {
+  await db.query('UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE id = ?', [
+    quantity,
+    productId,
+  ]);
+  await db.query(
+    `UPDATE products SET status = 'out_of_stock' WHERE id = ? AND stock <= 0`,
+    [productId]
+  );
+  if (variationId) {
+    await db.query(
+      'UPDATE product_variations SET stock = GREATEST(stock - ?, 0) WHERE id = ?',
+      [quantity, variationId]
+    );
+  }
+};
 
 const checkout = async (req, res, next) => {
   try {
@@ -41,15 +60,7 @@ const checkout = async (req, res, next) => {
       });
     }
 
-    const [cartItems] = await db.query(
-      `SELECT c.id, c.product_id, c.quantity, p.name, p.price, p.sale_price, p.stock,
-              p.business_id, b.owner_id, b.business_name
-       FROM cart_items c
-       JOIN products p ON p.id = c.product_id
-       JOIN businesses b ON b.id = p.business_id
-       WHERE c.user_id = ?`,
-      [req.user.id]
-    );
+    const cartItems = await Cart.getItems(req.user.id);
 
     if (!cartItems.length) {
       return res.status(400).json({ message: 'Cart is empty' });
@@ -58,19 +69,15 @@ const checkout = async (req, res, next) => {
     for (const item of cartItems) {
       if (Number(item.stock) < Number(item.quantity)) {
         return res.status(400).json({
-          message: `Insufficient stock for ${item.name}`,
+          message: `Insufficient stock for ${item.name}${
+            item.variation_value ? ` (${item.variation_value})` : ''
+          }`,
         });
       }
     }
 
-    const grandTotal = cartItems.reduce(
-      (sum, item) => sum + getUnitPrice(item) * Number(item.quantity),
-      0
-    );
-
-    if (paymentMethod === 'wallet') {
-      await debitWallet(req.user.id, grandTotal, 'Order payment', `checkout_${Date.now()}`);
-    }
+    const deliveryFee = Math.max(0, Number(await getSetting('delivery_fee', '40')) || 0);
+    const platformFee = Math.max(0, Number(await getSetting('platform_fee', '0')) || 0);
 
     const grouped = {};
     for (const item of cartItems) {
@@ -86,17 +93,34 @@ const checkout = async (req, res, next) => {
       grouped[businessId].items.push(item);
     }
 
+    let grandTotal = 0;
+    for (const group of Object.values(grouped)) {
+      const subtotal = group.items.reduce(
+        (sum, item) => sum + getUnitPrice(item) * Number(item.quantity),
+        0
+      );
+      grandTotal += subtotal + deliveryFee + platformFee;
+    }
+    grandTotal = Math.round(grandTotal * 100) / 100;
+
+    if (paymentMethod === 'wallet') {
+      await debitWallet(req.user.id, grandTotal, 'Order payment', `checkout_${Date.now()}`);
+    }
+
     const paymentStatus = paymentMethod === 'wallet' ? 'paid' : 'pending';
     const createdOrders = [];
     const gatewayPayments = [];
 
     for (const group of Object.values(grouped)) {
-      const totalAmount = group.items.reduce((sum, item) => {
-        return sum + getUnitPrice(item) * Number(item.quantity);
-      }, 0);
-      const roundedTotal = Math.round(totalAmount * 100) / 100;
+      const subtotal = Math.round(
+        group.items.reduce(
+          (sum, item) => sum + getUnitPrice(item) * Number(item.quantity),
+          0
+        ) * 100
+      ) / 100;
+      const roundedTotal = Math.round((subtotal + deliveryFee + platformFee) * 100) / 100;
       const { commissionAmount } = await calculateCommissionForBusiness(
-        roundedTotal,
+        subtotal,
         group.businessId
       );
       const orderNumber = `ORD-${Date.now()}-${uuidv4().slice(0, 8)}`;
@@ -106,7 +130,10 @@ const checkout = async (req, res, next) => {
         customerId: req.user.id,
         businessId: group.businessId,
         totalAmount: roundedTotal,
+        subtotalAmount: subtotal,
         commissionAmount,
+        deliveryFee,
+        platformFee,
         paymentMethod,
         shippingAddress,
         phone,
@@ -122,16 +149,24 @@ const checkout = async (req, res, next) => {
       for (const item of group.items) {
         const unitPrice = getUnitPrice(item);
         const lineTotal = Math.round(unitPrice * Number(item.quantity) * 100) / 100;
+        const label = item.variation_value
+          ? `${item.name} (${item.variation_value})`
+          : item.name;
         await db.query(
           `INSERT INTO order_items
-           (order_id, product_id, product_name, quantity, unit_price, total_price)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [orderId, item.product_id, item.name, item.quantity, unitPrice, lineTotal]
+           (order_id, product_id, product_name, quantity, unit_price, total_price, variation_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            orderId,
+            item.product_id,
+            label,
+            item.quantity,
+            unitPrice,
+            lineTotal,
+            item.variation_id || null,
+          ]
         );
-        await db.query('UPDATE products SET stock = stock - ? WHERE id = ?', [
-          item.quantity,
-          item.product_id,
-        ]);
+        await decrementStock(item.product_id, item.quantity, item.variation_id || null);
       }
 
       await db.query(

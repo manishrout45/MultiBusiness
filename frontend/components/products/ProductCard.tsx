@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Heart, ShoppingCart, Star } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { useAuth } from '@/features/auth';
@@ -43,6 +43,30 @@ export function ProductCard({
   const price = product.salePrice ?? product.price;
   const onSale = product.salePrice != null && product.salePrice < product.price;
   const displayRating = rating != null && rating > 0 ? rating.toFixed(1) : '—';
+
+  useEffect(() => {
+    setWishlisted(initialWishlisted);
+  }, [initialWishlisted, product.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (initialWishlisted) return;
+      if (isAuthenticated && token) {
+        const items = await wishlistService.list(token);
+        if (!cancelled) {
+          setWishlisted(items.some((item) => String(item.productId) === String(product.id)));
+        }
+        return;
+      }
+      if (!cancelled) {
+        setWishlisted(wishlistService.localIds().includes(String(product.id)));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [product.id, isAuthenticated, token, initialWishlisted]);
 
   async function add() {
     await addItem({
@@ -94,10 +118,17 @@ export function ProductCard({
     <motion.article
       whileHover={{ y: -4 }}
       className={cn(
-        'group flex h-full flex-col overflow-hidden rounded-3xl border border-border/70 bg-white marketplace-shadow',
+        'group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border/70 bg-white marketplace-shadow',
         className
       )}
     >
+      <Link
+        href={`/products/${product.id}`}
+        className="absolute inset-0 z-10"
+        aria-label={`View ${product.name}`}
+      >
+        <span className="sr-only">View {product.name}</span>
+      </Link>
       <div className="relative aspect-square bg-muted">
         <Image
           src={product.images[0] || PLACEHOLDER}
@@ -107,7 +138,7 @@ export function ProductCard({
           sizes="(max-width: 640px) 170px, 20vw"
         />
         {onSale && (
-          <span className="absolute left-2.5 top-2.5 rounded-full bg-[hsl(var(--offer))] px-2 py-0.5 text-[10px] font-bold text-white">
+          <span className="absolute left-2.5 top-2.5 z-20 rounded-full bg-[hsl(var(--offer))] px-2 py-0.5 text-[10px] font-bold text-white">
             Deal
           </span>
         )}
@@ -115,22 +146,28 @@ export function ProductCard({
           type="button"
           aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           disabled={wishBusy}
-          onClick={() => void toggleWishlist()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void toggleWishlist();
+          }}
           className={cn(
-            'absolute right-2.5 top-2.5 flex size-9 items-center justify-center rounded-full border bg-white/95 shadow-sm transition hover:scale-105',
+            'absolute right-2.5 top-2.5 z-20 flex size-9 items-center justify-center rounded-full border bg-white/95 shadow-sm transition hover:scale-105',
             wishlisted ? 'text-red-500' : 'text-muted-foreground'
           )}
         >
           <Heart className={cn('size-4', wishlisted && 'fill-current')} />
         </button>
       </div>
-      <div className="flex flex-1 flex-col gap-1 p-3.5">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
-          <Link href={`/products/${product.id}`} className="hover:text-primary hover:underline">
-            {product.name}
-          </Link>
+      <div className="relative z-0 flex flex-1 flex-col gap-1 p-3.5">
+        <h3 className="line-clamp-2 text-sm font-semibold leading-snug group-hover:text-primary">
+          {product.name}
         </h3>
-        <Link href={storeHref} className="text-[11px] text-muted-foreground hover:text-primary">
+        <Link
+          href={storeHref}
+          onClick={(e) => e.stopPropagation()}
+          className="relative z-20 text-[11px] text-muted-foreground hover:text-primary"
+        >
           {vendorName}
         </Link>
         <div className="flex items-center gap-1 text-[11px] font-medium text-amber-700">
@@ -149,9 +186,13 @@ export function ProductCard({
           type="button"
           size="sm"
           variant="outline"
-          className="mt-auto w-full rounded-xl border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground"
+          className="relative z-20 mt-auto w-full rounded-xl border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground"
           disabled={isUpdating || product.stock <= 0}
-          onClick={() => void add()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void add();
+          }}
         >
           <ShoppingCart className="size-3.5" />
           {product.stock <= 0 ? 'Out of stock' : 'Add Cart'}

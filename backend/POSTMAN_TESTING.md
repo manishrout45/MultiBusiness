@@ -84,6 +84,7 @@ Base: `http://localhost:5000/api`
 | GET | `/featured` | Featured businesses |
 | GET | `/offers` | Public offers |
 | GET | `/theme` | Homepage theme |
+| GET | `/fees` | Delivery + platform fee amounts |
 | GET | `/banners` | Homepage banners |
 | GET | `/announcements` | Public announcements |
 | GET | `/reviews?businessId=1` | **Requires** `businessId` or `slug` query |
@@ -114,9 +115,9 @@ Demo seed products (`Organic Honey`, etc.) already use the **same** APIs as futu
 **When real products replace demo:** vendor creates → manager approves → same `GET /products` shows them. No FE rewiring needed.
 
 
-1. `POST /customer/cart` `{ "productId": 1, "quantity": 1 }`
+1. `POST /customer/cart` `{ "productId": 1, "quantity": 1, "variationId": 2 }` (omit `variationId` if product has no sizes)
 2. `GET /customer/cart`
-3. Checkout COD (works without Razorpay):
+3. Checkout COD (works without Razorpay) — order total = items + delivery_fee + platform_fee per vendor:
 
 ```json
 POST /customer/checkout
@@ -160,8 +161,27 @@ POST /customer/disputes
 1. `GET /vendor/dashboard`
 2. `GET /vendor/profile` / `PUT /vendor/profile`
 3. `GET /vendor/products` / `POST /vendor/products` (needs approved vendor)
-4. `GET /vendor/orders` → `PATCH /vendor/orders/:id/status` `{ "status": "confirmed" }`  
-   Allowed: `pending`, `confirmed`, `processing`, `shipped`, `delivered`, `cancelled`
+
+```json
+POST /vendor/products
+{
+  "name": "Cotton Tee",
+  "price": 499,
+  "description": "Soft cotton",
+  "stock": 30,
+  "variations": [
+    { "name": "Size", "value": "S", "stock": 10 },
+    { "name": "Size", "value": "M", "stock": 12 },
+    { "name": "Size", "value": "L", "stock": 8 }
+  ]
+}
+```
+
+Total `stock` is summed from size stocks when variations are sent. Update with `PUT /vendor/products/:id` the same way.
+
+4. `GET /vendor/orders` → `PATCH /vendor/orders/:id/status` `{ "status": "accepted" }`  
+   Allowed: `pending`/`placed`, `confirmed`/`accepted`, `processing`/`packed`, `shipped`, `delivered`, `cancelled`, `returned`  
+   Cancel/return restores product (+ size) stock. Checkout decrements stock; totals include `delivery_fee` + `platform_fee` from `platform_settings` (`GET /fees`).
 5. `GET /vendor/refunds` → `PATCH /vendor/refunds/:id` `{ "action": "approve" }`  
    Approving credits customer wallet and marks refund `processed`
 6. Subscriptions:

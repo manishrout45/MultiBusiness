@@ -46,10 +46,17 @@ export function MarketplaceProductCard({
     <motion.article
       whileHover={{ y: -4 }}
       className={cn(
-        'group flex h-full w-[180px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-white marketplace-shadow sm:w-auto',
+        'group relative flex h-full w-[180px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-white marketplace-shadow sm:w-auto',
         className
       )}
     >
+      <Link
+        href={`/products/${product.id}`}
+        className="absolute inset-0 z-10"
+        aria-label={`View ${product.name}`}
+      >
+        <span className="sr-only">View {product.name}</span>
+      </Link>
       <div className="relative aspect-square bg-muted">
         <Image
           src={product.images[0] || PLACEHOLDER}
@@ -59,13 +66,15 @@ export function MarketplaceProductCard({
           sizes="(max-width: 640px) 180px, 20vw"
         />
         {hasSale && (
-          <span className="absolute left-2 top-2 rounded-full bg-[hsl(var(--offer))] px-2 py-0.5 text-[10px] font-bold text-white">
+          <span className="absolute left-2 top-2 z-20 rounded-full bg-[hsl(var(--offer))] px-2 py-0.5 text-[10px] font-bold text-white">
             Sale
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col p-3">
-        <p className="line-clamp-2 text-sm font-semibold leading-snug">{product.name}</p>
+      <div className="relative z-0 flex flex-1 flex-col p-3">
+        <p className="line-clamp-2 text-sm font-semibold leading-snug group-hover:text-primary">
+          {product.name}
+        </p>
         <p className="mt-1 text-[11px] text-muted-foreground">{vendorName}</p>
         <div className="mt-1 flex items-center gap-1 text-[11px] text-amber-700">
           <Star className="size-3 fill-amber-400 text-amber-400" />
@@ -83,9 +92,13 @@ export function MarketplaceProductCard({
           type="button"
           size="sm"
           variant="outline"
-          className="mt-auto w-full rounded-xl border-primary/25 text-primary hover:bg-primary hover:text-primary-foreground"
+          className="relative z-20 mt-auto w-full rounded-xl border-primary/25 text-primary hover:bg-primary hover:text-primary-foreground"
           disabled={isUpdating || product.stock <= 0}
-          onClick={() => void handleAdd()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void handleAdd();
+          }}
         >
           <ShoppingCart className="size-3.5" />
           {product.stock <= 0 ? 'Out of stock' : 'Add'}

@@ -7,10 +7,14 @@ export interface CartItem {
   image: string;
   price: number;
   quantity: number;
+  variationId?: string | null;
+  variationLabel?: string | null;
 }
 
 export interface CartTotals {
   subtotal: number;
+  deliveryFee: number;
+  platformFee: number;
   total: number;
   itemCount: number;
 }

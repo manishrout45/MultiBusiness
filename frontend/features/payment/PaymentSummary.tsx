@@ -20,9 +20,17 @@ export function PaymentSummary({ totals, paymentMethodLabel }: PaymentSummaryPro
           <span>₹{totals.subtotal.toLocaleString()}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Delivery</span>
-          <span className="text-emerald-600">Free</span>
+          <span className="text-muted-foreground">Delivery fee</span>
+          <span>
+            {totals.deliveryFee > 0 ? `₹${totals.deliveryFee.toLocaleString()}` : 'Free'}
+          </span>
         </div>
+        {totals.platformFee > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Platform fee</span>
+            <span>₹{totals.platformFee.toLocaleString()}</span>
+          </div>
+        )}
         {paymentMethodLabel && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Payment</span>

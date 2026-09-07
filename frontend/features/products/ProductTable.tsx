@@ -30,7 +30,16 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
               <td className="px-4 py-3 font-medium">{product.name}</td>
               <td className="px-4 py-3">{product.category}</td>
               <td className="px-4 py-3">₹{(product.salePrice ?? product.price).toLocaleString()}</td>
-              <td className="px-4 py-3">{product.stock}</td>
+              <td className="px-4 py-3">
+                <div>{product.stock}</div>
+                {product.variations?.length > 0 && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {product.variations
+                      .map((v) => `${v.value}:${v.stock}`)
+                      .join(' · ')}
+                  </p>
+                )}
+              </td>
               <td className="px-4 py-3">
                 <Badge variant={product.stock > 0 ? 'success' : 'warning'}>
                   {product.status.replace('_', ' ')}
