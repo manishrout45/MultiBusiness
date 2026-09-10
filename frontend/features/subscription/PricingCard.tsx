@@ -13,10 +13,18 @@ interface PricingCardProps {
   currentPlanId?: string | null;
   onSelect: (planId: string) => void;
   isSubmitting?: boolean;
+  disabledReason?: string;
 }
 
-export function PricingCard({ plan, currentPlanId, onSelect, isSubmitting }: PricingCardProps) {
+export function PricingCard({
+  plan,
+  currentPlanId,
+  onSelect,
+  isSubmitting,
+  disabledReason,
+}: PricingCardProps) {
   const isCurrent = currentPlanId === plan.id;
+  const isFree = plan.monthlyFee <= 0;
 
   return (
     <motion.div
@@ -28,20 +36,26 @@ export function PricingCard({ plan, currentPlanId, onSelect, isSubmitting }: Pri
       <Card
         className={cn(
           'flex h-full flex-col',
-          plan.highlighted && 'border-primary shadow-md ring-2 ring-primary/20'
+          plan.highlighted && 'border-primary shadow-md ring-2 ring-primary/20',
+          isFree && 'border-emerald-300'
         )}
       >
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <CardTitle>{plan.name}</CardTitle>
             {plan.highlighted && <Badge>Popular</Badge>}
+            {isFree && <Badge variant="success">Free</Badge>}
           </div>
           <p className="pt-2">
-            <span className="text-3xl font-bold">₹{plan.monthlyFee.toLocaleString()}</span>
+            <span className="text-3xl font-bold">
+              {isFree ? '₹0' : `₹${plan.monthlyFee.toLocaleString()}`}
+            </span>
             <span className="text-sm text-muted-foreground">/month</span>
           </p>
           <p className="text-xs text-muted-foreground">
-            or ₹{plan.yearlyFee.toLocaleString()}/year
+            {isFree
+              ? 'Limited free listing slots'
+              : `or ₹${plan.yearlyFee.toLocaleString()}/year`}
             {plan.maxProducts != null
               ? ` · up to ${plan.maxProducts} products`
               : ' · unlimited products'}
@@ -57,14 +71,23 @@ export function PricingCard({ plan, currentPlanId, onSelect, isSubmitting }: Pri
             ))}
           </ul>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-2">
+          {disabledReason && (
+            <p className="w-full text-center text-xs text-amber-700">{disabledReason}</p>
+          )}
           <Button
             className="w-full"
             variant={isCurrent ? 'outline' : plan.highlighted ? 'default' : 'secondary'}
-            disabled={isCurrent || isSubmitting}
+            disabled={isCurrent || isSubmitting || Boolean(disabledReason)}
             onClick={() => onSelect(plan.id)}
           >
-            {isCurrent ? 'Current plan' : isSubmitting ? 'Updating…' : 'Choose plan'}
+            {isCurrent
+              ? 'Current plan'
+              : disabledReason
+                ? 'Unavailable'
+                : isSubmitting
+                  ? 'Updating…'
+                  : 'Choose plan'}
           </Button>
         </CardFooter>
       </Card>

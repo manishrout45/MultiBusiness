@@ -1,6 +1,7 @@
 ﻿const Review = require('../../models/Review');
 const Product = require('../../models/Product');
 const db = require('../../config/db');
+const { getUploadedFileUrl } = require('../../middleware/upload');
 
 const createReview = async (req, res, next) => {
   try {
@@ -60,8 +61,35 @@ const createReview = async (req, res, next) => {
       comment,
     });
 
+    const files = Array.isArray(req.files) ? req.files : [];
+    const photoUrls = [];
+    if (Array.isArray(req.body.photos)) {
+      for (const url of req.body.photos) {
+        if (typeof url === 'string' && url.startsWith('http')) photoUrls.push(url.slice(0, 500));
+      }
+    } else if (typeof req.body.photos === 'string' && req.body.photos.startsWith('http')) {
+      photoUrls.push(req.body.photos.slice(0, 500));
+    }
+    for (const file of files.slice(0, 5)) {
+      const url = getUploadedFileUrl(file);
+      if (url) photoUrls.push(String(url).slice(0, 500));
+    }
+    for (const url of photoUrls.slice(0, 5)) {
+      await db.query('INSERT INTO review_images (review_id, file_path) VALUES (?, ?)', [
+        reviewId,
+        url,
+      ]);
+    }
+
     const [rows] = await db.query('SELECT * FROM reviews WHERE id = ?', [reviewId]);
-    res.status(201).json({ message: 'Review submitted', data: rows[0] });
+    const [images] = await db.query(
+      'SELECT id, file_path FROM review_images WHERE review_id = ?',
+      [reviewId]
+    );
+    res.status(201).json({
+      message: 'Review submitted',
+      data: { ...rows[0], images },
+    });
   } catch (err) {
     next(err);
   }

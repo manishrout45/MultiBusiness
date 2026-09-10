@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Heart, Minus, Plus, ShoppingCart, Star, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ReportButton } from '@/components/ReportButton';
 import { useAuth } from '@/features/auth';
 import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/components/ui/toast';
@@ -388,6 +389,16 @@ export default function ProductDetailPage() {
               >
                 Shop now
               </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <ReportButton targetType="product" targetId={product.id} label="Report product" />
+              {product.vendorId ? (
+                <ReportButton
+                  targetType="business"
+                  targetId={product.vendorId}
+                  label="Report store"
+                />
+              ) : null}
             </div>
           </div>
         </div>

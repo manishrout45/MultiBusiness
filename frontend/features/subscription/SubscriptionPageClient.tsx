@@ -8,6 +8,7 @@ import { useAuth } from '@/features/auth';
 import {
   subscriptionService,
   type CurrentSubscription,
+  type FreeListingStatus,
   type SubscriptionPlan as Plan,
 } from '@/services/subscriptionService';
 import { CurrentPlan } from './CurrentPlan';
@@ -18,17 +19,20 @@ export function SubscriptionPageClient() {
   const { toast } = useToast();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [current, setCurrent] = useState<CurrentSubscription | null>(null);
+  const [freeListing, setFreeListing] = useState<FreeListingStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const [p, c] = await Promise.all([
+    const [p, c, f] = await Promise.all([
       subscriptionService.listPlans(token),
       subscriptionService.getCurrentSubscription(token),
+      subscriptionService.getFreeListingStatus(),
     ]);
     setPlans(p);
     setCurrent(c);
+    setFreeListing(f);
     setIsLoading(false);
   }, [token]);
 
@@ -41,6 +45,8 @@ export function SubscriptionPageClient() {
     try {
       const sub = await subscriptionService.subscribe(planId, 'monthly', token);
       setCurrent(sub);
+      const f = await subscriptionService.getFreeListingStatus();
+      setFreeListing(f);
       toast({
         title: 'Plan updated',
         description: `You are now on ${sub.planName}.`,
@@ -78,6 +84,22 @@ export function SubscriptionPageClient() {
         </p>
       </div>
 
+      {freeListing && (
+        <div className="rounded-2xl border bg-card px-4 py-3 text-sm">
+          <p className="font-medium">Free listing spots</p>
+          <p className="mt-1 text-muted-foreground">
+            {freeListing.spotsLeft > 0 ? (
+              <>
+                <span className="font-semibold text-primary">{freeListing.spotsLeft}</span> of{' '}
+                {freeListing.quota} free spots left ({freeListing.used} used).
+              </>
+            ) : (
+              <>Free listing is full ({freeListing.used}/{freeListing.quota}). Choose a paid plan.</>
+            )}
+          </p>
+        </div>
+      )}
+
       <CurrentPlan subscription={current} isLoading={isLoading} />
 
       <SubscriptionPlan
@@ -85,6 +107,7 @@ export function SubscriptionPageClient() {
         currentPlanId={current?.planId}
         onSelect={(id) => void handleSelect(id)}
         isSubmitting={isSubmitting}
+        freeListing={freeListing}
       />
     </div>
   );

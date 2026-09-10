@@ -33,6 +33,19 @@ export function ReviewCard({ review, index = 0 }: ReviewCardProps) {
         <RatingStars value={review.rating} readOnly size="sm" />
       </div>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{review.comment}</p>
+      {review.images && review.images.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {review.images.map((src) => (
+            <a key={src} href={src} target="_blank" rel="noreferrer" className="block">
+              <img
+                src={src}
+                alt="Review"
+                className="h-20 w-20 rounded-lg object-cover border"
+              />
+            </a>
+          ))}
+        </div>
+      )}
       <p className="mt-3 text-xs text-muted-foreground">{date}</p>
     </motion.article>
   );

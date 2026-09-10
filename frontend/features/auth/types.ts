@@ -10,6 +10,9 @@ export interface AuthUser {
   avatar?: string | null;
   email_verified?: number | boolean;
   phone_verified?: number | boolean;
+  aadhaar_verified?: number | boolean;
+  aadhaar_masked?: string | null;
+  aadhaar_verified_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -18,11 +21,23 @@ export interface AuthResponse {
   message: string;
   token: string;
   user: AuthUser;
+  session?: {
+    replacedOldest?: boolean;
+    maxDevices?: number;
+  };
+  code?: string;
+  devices?: Array<{
+    deviceId: string;
+    deviceLabel?: string | null;
+    lastSeenAt?: string;
+  }>;
+  maxDevices?: number;
 }
 
 export interface LoginInput {
   email: string;
   password: string;
+  force?: boolean;
 }
 
 export interface PhoneOtpSendResponse {

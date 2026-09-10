@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Phone } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useAuth } from '@/features/auth';
-import { ApiError } from '@/lib/api';
+import { ApiError, getMaxDevicesFromError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -87,6 +87,25 @@ export function AuthSocialOptions({
         await loginWithGoogle(response.credential);
         successRef.current?.();
       } catch (err) {
+        if (err instanceof ApiError && err.code === 'DEVICE_LIMIT') {
+          try {
+            await loginWithGoogle(response.credential, true);
+            successRef.current?.();
+            const max = getMaxDevicesFromError(err);
+            toast({
+              title: 'Signed in',
+              description: `Oldest device session was signed out (max ${max} devices).`,
+              variant: 'success',
+            });
+            return;
+          } catch (retryErr) {
+            const message =
+              retryErr instanceof ApiError ? retryErr.message : 'Google sign-in failed';
+            errorRef.current?.(message);
+            toast({ title: 'Google sign-in', description: message, variant: 'error' });
+            return;
+          }
+        }
         const message = err instanceof ApiError ? err.message : 'Google sign-in failed';
         errorRef.current?.(message);
         toast({ title: 'Google sign-in', description: message, variant: 'error' });

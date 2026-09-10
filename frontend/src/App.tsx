@@ -15,6 +15,7 @@ import RegisterPage from '@/app/register/page';
 import ForgotPasswordPage from '@/app/forgot-password/page';
 import ResetPasswordPage from '@/app/reset-password/page';
 import VerifyEmailPage from '@/app/verify-email/page';
+import VerifyAadhaarPage from '@/app/verify-aadhaar/page';
 import SearchPage from '@/app/search/page';
 import CategoriesPage from '@/app/categories/page';
 import CategoryDetailPage from '@/app/categories/CategoryDetailPage';
@@ -38,6 +39,8 @@ import VendorOrdersPage from '@/app/vendor/orders/page';
 import VendorCategoriesPage from '@/app/vendor/categories/page';
 import VendorProfilePage from '@/app/vendor/profile/page';
 import VendorSubscriptionPage from '@/app/vendor/subscription/page';
+import VendorChatPage from '@/app/vendor/chat/page';
+import ChatPage from '@/app/chat/page';
 import NotFoundPage from '@/app/not-found';
 
 function ScrollToTop() {
@@ -86,6 +89,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/verify-aadhaar" element={<VerifyAadhaarPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/categories/:slug" element={<CategoryDetailPage />} />
@@ -112,7 +116,12 @@ export default function App() {
             <Route path="categories" element={<VendorCategoriesPage />} />
             <Route path="profile" element={<VendorProfilePage />} />
             <Route path="subscription" element={<VendorSubscriptionPage />} />
+            <Route path="chat" element={<VendorChatPage />} />
+            <Route path="chat/:id" element={<VendorChatPage />} />
           </Route>
+
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat/:id" element={<ChatPage />} />
 
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="dashboard" element={<AdminDashboardPage />} />

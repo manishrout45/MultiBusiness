@@ -56,5 +56,8 @@ router.patch('/notifications/:id/read', vendor.notificationController.markRead);
 router.patch('/notifications/read-all', vendor.notificationController.markAllRead);
 router.get('/export/customers', vendor.exportController.exportCustomers);
 router.get('/export/sales', vendor.exportController.exportSales);
+router.get('/chat', vendor.chatController.listThreads);
+router.get('/chat/:id', vendor.chatController.getThread);
+router.post('/chat/:id/messages', vendor.chatController.sendMessage);
 
 module.exports = router;

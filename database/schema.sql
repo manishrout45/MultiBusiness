@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS users (
   phone_verified TINYINT(1) DEFAULT 0,
   status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
   avatar VARCHAR(255) NULL,
+  aadhaar_verified TINYINT(1) NOT NULL DEFAULT 0,
+  aadhaar_masked VARCHAR(20) NULL,
+  aadhaar_verified_at DATETIME NULL,
   reset_token VARCHAR(255) NULL,
   reset_token_expires DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -556,4 +559,40 @@ CREATE TABLE IF NOT EXISTS auth_otps (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_otp_lookup (channel, destination, purpose),
   INDEX idx_otp_expires (expires_at)
+) ENGINE=InnoDB;
+
+-- Aadhaar KYC (vendor / business_manager)
+CREATE TABLE IF NOT EXISTS aadhaar_verifications (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  aadhaar_hash VARCHAR(64) NOT NULL,
+  aadhaar_masked VARCHAR(20) NOT NULL,
+  provider VARCHAR(40) NOT NULL DEFAULT 'mock',
+  provider_ref VARCHAR(100) NULL,
+  otp_hash VARCHAR(128) NULL,
+  status ENUM('pending','verified','failed','expired') NOT NULL DEFAULT 'pending',
+  attempts INT UNSIGNED NOT NULL DEFAULT 0,
+  expires_at DATETIME NOT NULL,
+  verified_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_aadhaar_user (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Device sessions (max 2 active per user)
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  session_id VARCHAR(64) NOT NULL,
+  device_id VARCHAR(100) NOT NULL,
+  device_label VARCHAR(150) NULL,
+  user_agent VARCHAR(255) NULL,
+  ip_address VARCHAR(64) NULL,
+  last_seen_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  revoked_at DATETIME NULL,
+  UNIQUE KEY uk_session_id (session_id),
+  INDEX idx_sessions_user (user_id),
+  INDEX idx_sessions_user_device (user_id, device_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

@@ -8,12 +8,93 @@ const {
 const { sendEmail, isEmailConfigured } = require('../../services/email.service');
 const { sendSMS } = require('../../services/sms.service');
 const { saveOtp, consumeOtp } = require('../../services/otp.service');
+const {
+  createOrRefreshSession,
+  listActive,
+  revokeBySessionId,
+  revokeSessionRow,
+  MAX_DEVICES,
+} = require('../../services/session.service');
 const db = require('../../config/db');
 
 const sanitizeUser = (user) => {
   if (!user) return null;
   const { password, reset_token, reset_token_expires, ...safe } = user;
   return safe;
+};
+
+const parseForce = (value) => {
+  if (value === true || value === 1) return true;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    return v === 'true' || v === '1' || v === 'yes';
+  }
+  return false;
+};
+
+const clientMeta = (req) => {
+  const ua = req.headers['user-agent'] || '';
+  const ip = req.ip || req.headers['x-forwarded-for'] || null;
+  let deviceId = req.body.deviceId || req.headers['x-device-id'];
+  if (!deviceId) {
+    // Postman / API tools: treat UA+IP as a stable device fingerprint
+    deviceId = `api-${require('crypto')
+      .createHash('sha256')
+      .update(`${ua}|${ip || ''}`)
+      .digest('hex')
+      .slice(0, 24)}`;
+  }
+  return {
+    deviceId,
+    deviceLabel: req.body.deviceLabel || req.headers['x-device-label'] || 'API client',
+    userAgent: ua || null,
+    ip,
+    force: parseForce(req.body.force),
+  };
+};
+
+const issueAuth = async (req, res, user, message = 'Login successful') => {
+  const meta = clientMeta(req);
+  let session;
+  try {
+    session = await createOrRefreshSession({
+      userId: user.id,
+      deviceId: meta.deviceId,
+      deviceLabel: meta.deviceLabel,
+      userAgent: meta.userAgent,
+      ip: meta.ip,
+      force: meta.force,
+    });
+  } catch (err) {
+    if (err.code === 'DEVICE_LIMIT') {
+      return res.status(403).json({
+        message: err.message,
+        code: err.code,
+        devices: err.devices,
+        maxDevices: MAX_DEVICES(),
+      });
+    }
+    throw err;
+  }
+
+  const token = generateToken({
+    id: user.id,
+    role: user.role,
+    email: user.email,
+    sid: session.sessionId,
+  });
+
+  return res.json({
+    message: session.replacedOldest
+      ? `${message} Oldest device session was signed out.`
+      : message,
+    token,
+    user: sanitizeUser(user),
+    session: {
+      replacedOldest: session.replacedOldest,
+      maxDevices: MAX_DEVICES(),
+    },
+  });
 };
 
 const register = async (req, res, next) => {
@@ -118,13 +199,7 @@ const login = async (req, res, next) => {
       });
     }
 
-    const token = generateToken({ id: user.id, role: user.role, email: user.email });
-
-    res.json({
-      message: 'Login successful',
-      token,
-      user: sanitizeUser(user),
-    });
+    return issueAuth(req, res, user, 'Login successful');
   } catch (err) {
     next(err);
   }
@@ -197,12 +272,7 @@ const googleLogin = async (req, res, next) => {
       return res.status(403).json({ message: 'Account is not active' });
     }
 
-    const token = generateToken({ id: user.id, role: user.role, email: user.email });
-    res.json({
-      message: 'Login successful',
-      token,
-      user: sanitizeUser(user),
-    });
+    return issueAuth(req, res, user, 'Login successful');
   } catch (err) {
     next(err);
   }
@@ -370,6 +440,52 @@ const getProfile = async (req, res, next) => {
   }
 };
 
+const logout = async (req, res, next) => {
+  try {
+    if (req.user?.sid) {
+      await revokeBySessionId(req.user.sid);
+    }
+    res.json({ message: 'Logged out' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const listSessions = async (req, res, next) => {
+  try {
+    const sessions = await listActive(req.user.id);
+    res.json({
+      data: sessions.map((s) => ({
+        id: s.id,
+        deviceId: s.device_id,
+        deviceLabel: s.device_label,
+        userAgent: s.user_agent,
+        lastSeenAt: s.last_seen_at,
+        createdAt: s.created_at,
+        current: s.session_id === req.user.sid,
+      })),
+      maxDevices: MAX_DEVICES(),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const revokeSession = async (req, res, next) => {
+  try {
+    const sessionPk = Number(req.params.id);
+    const sessions = await listActive(req.user.id);
+    const target = sessions.find((s) => Number(s.id) === sessionPk);
+    if (!target) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    await revokeSessionRow(target.id);
+    res.json({ message: 'Device signed out' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 /** Normalize India-friendly phones to +91XXXXXXXXXX */
 const normalizePhone = (raw) => {
   const cleaned = String(raw || '').trim();
@@ -469,12 +585,7 @@ const verifyPhoneOtp = async (req, res, next) => {
       return res.status(403).json({ message: 'Account is not active' });
     }
 
-    const token = generateToken({ id: user.id, role: user.role, email: user.email });
-    res.json({
-      message: 'Login successful',
-      token,
-      user: sanitizeUser(user),
-    });
+    return issueAuth(req, res, user, 'Login successful');
   } catch (err) {
     next(err);
   }
@@ -492,4 +603,7 @@ module.exports = {
   forgotPassword,
   resetPassword,
   getProfile,
+  logout,
+  listSessions,
+  revokeSession,
 };

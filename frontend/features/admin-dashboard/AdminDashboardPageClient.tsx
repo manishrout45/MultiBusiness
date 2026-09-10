@@ -16,6 +16,8 @@ import { VendorManagement } from './VendorManagement';
 import { CategoryManagement } from './CategoryManagement';
 import { ThemeManagement } from './ThemeManagement';
 import { CommissionManagement } from './CommissionManagement';
+import { FreeListingSettings } from './FreeListingSettings';
+import { ContentReportsModeration } from './ContentReportsModeration';
 import {
   OffersManagement,
   AnnouncementsManagement,
@@ -56,7 +58,7 @@ export function AdminDashboardPageClient() {
   }, []);
 
   useEffect(() => {
-    if (!isSuperAdmin && (section === 'users' || section === 'reports' || section === 'commissions')) {
+    if (!isSuperAdmin && (section === 'users' || section === 'reports' || section === 'commissions' || section === 'settings')) {
       setSection('overview');
     }
   }, [isSuperAdmin, section]);
@@ -228,12 +230,21 @@ export function AdminDashboardPageClient() {
           {section === 'vendors' && <VendorManagement />}
           {section === 'orders' && <OrderMonitoring />}
           {section === 'reviews' && <ReviewModeration />}
+          {section === 'moderation' && <ContentReportsModeration />}
           {section === 'categories' && <CategoryManagement />}
           {section === 'theme' && <ThemeManagement />}
           {section === 'offers' && <OffersManagement />}
           {section === 'announcements' && <AnnouncementsManagement />}
           {section === 'reports' && isSuperAdmin && <ReportsManagement />}
           {section === 'commissions' && isSuperAdmin && <CommissionManagement />}
+          {section === 'settings' && isSuperAdmin && (
+            <section className="space-y-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Platform settings
+              </h2>
+              <FreeListingSettings />
+            </section>
+          )}
         </div>
       </div>
     </div>

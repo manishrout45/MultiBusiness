@@ -1,4 +1,6 @@
 const authController = require('../controllers/auth/auth.controller');
+const aadhaarController = require('../controllers/auth/aadhaar.controller');
+const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const {
   registerValidator,
@@ -19,6 +21,13 @@ router.post('/verify-email', authController.verifyEmail);
 router.post('/verify-mobile', authController.verifyMobile);
 router.post('/forgot-password', forgotPasswordValidator, validate, authController.forgotPassword);
 router.post('/reset-password', resetPasswordValidator, validate, authController.resetPassword);
-router.get('/me', require('../middleware/auth').authenticate, authController.getProfile);
+router.get('/me', authenticate, authController.getProfile);
+router.post('/logout', authenticate, authController.logout);
+router.get('/sessions', authenticate, authController.listSessions);
+router.delete('/sessions/:id', authenticate, authController.revokeSession);
+
+router.get('/aadhaar/status', authenticate, aadhaarController.getAadhaarStatus);
+router.post('/aadhaar/send-otp', authenticate, aadhaarController.sendAadhaarOtp);
+router.post('/aadhaar/verify-otp', authenticate, aadhaarController.verifyAadhaarOtp);
 
 module.exports = router;

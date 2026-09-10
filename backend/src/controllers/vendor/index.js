@@ -16,4 +16,5 @@ module.exports = {
   reportController: require('./report.controller.js'),
   reviewController: require('./review.controller.js'),
   subscriptionController: require('./subscription.controller.js'),
+  chatController: require('../customer/chat.controller.js'),
 };

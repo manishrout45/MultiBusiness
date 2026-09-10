@@ -23,7 +23,24 @@ export interface CurrentSubscription {
   features: string[];
 }
 
+export interface FreeListingStatus {
+  quota: number;
+  used: number;
+  spotsLeft: number;
+  available: boolean;
+  planSlug?: string;
+}
+
 const DEFAULT_PLANS: SubscriptionPlan[] = [
+  {
+    id: '0',
+    name: 'Free Listing',
+    slug: 'free',
+    monthlyFee: 0,
+    yearlyFee: 0,
+    features: ['Digital storefront', 'Limited product listings', 'Community support'],
+    maxProducts: 15,
+  },
   {
     id: '1',
     name: 'Basic',
@@ -94,6 +111,15 @@ function parseFeatures(raw: unknown): string[] {
 export const subscriptionService = {
   getDefaultPlans(): SubscriptionPlan[] {
     return DEFAULT_PLANS;
+  },
+
+  async getFreeListingStatus(): Promise<FreeListingStatus> {
+    try {
+      const res = await apiRequest<{ data: FreeListingStatus }>('/free-listing');
+      return res.data;
+    } catch {
+      return { quota: 20, used: 0, spotsLeft: 20, available: true, planSlug: 'free' };
+    }
   },
 
   async listPlans(token?: string | null): Promise<SubscriptionPlan[]> {

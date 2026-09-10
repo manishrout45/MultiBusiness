@@ -29,7 +29,24 @@ router.post(
 router.get('/orders', customer.orderController.listOrders);
 router.get('/orders/:id', customer.orderController.getOrder);
 router.get('/orders/:id/track', customer.orderController.trackOrder);
-router.post('/reviews', validateBody(['rating']), customer.reviewController.createReview);
+router.post(
+  '/reviews',
+  (req, res, next) => {
+    const ct = String(req.headers['content-type'] || '');
+    if (ct.includes('multipart/form-data')) {
+      req.uploadFolder = 'reviews';
+      return require('../middleware/upload').upload.array('photos', 5)(req, res, next);
+    }
+    next();
+  },
+  customer.reviewController.createReview
+);
+router.post('/reports', validateBody(['reason']), customer.reportController.createReport);
+router.get('/reports', customer.reportController.listMyReports);
+router.get('/chat', customer.chatController.listThreads);
+router.post('/chat', customer.chatController.createThread);
+router.get('/chat/:id', customer.chatController.getThread);
+router.post('/chat/:id/messages', customer.chatController.sendMessage);
 router.get('/purchase-history', customer.orderController.purchaseHistory);
 router.post('/support', customer.supportController.createTicket);
 router.get('/support', customer.supportController.listTickets);

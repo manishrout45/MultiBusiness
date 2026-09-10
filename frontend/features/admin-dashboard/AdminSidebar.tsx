@@ -10,6 +10,7 @@ import {
   Megaphone,
   Palette,
   Percent,
+  Settings,
   Star,
   Store,
   Tag,
@@ -32,7 +33,9 @@ export type AdminSection =
   | 'offers'
   | 'announcements'
   | 'reports'
-  | 'commissions';
+  | 'commissions'
+  | 'settings'
+  | 'moderation';
 
 const LINKS: Array<{
   section: AdminSection;
@@ -46,12 +49,14 @@ const LINKS: Array<{
   { section: 'vendors', label: 'Vendors', icon: Store, roles: ['super_admin', 'business_manager'] },
   { section: 'orders', label: 'Orders', icon: ClipboardList, roles: ['super_admin', 'business_manager'] },
   { section: 'reviews', label: 'Reviews', icon: Star, roles: ['super_admin', 'business_manager'] },
+  { section: 'moderation', label: 'Content reports', icon: Flag, roles: ['super_admin', 'business_manager'] },
   { section: 'categories', label: 'Categories', icon: FolderTree, roles: ['super_admin', 'business_manager'] },
   { section: 'theme', label: 'Theme', icon: Palette, roles: ['super_admin', 'business_manager'] },
   { section: 'offers', label: 'Offers / Banners', icon: Tag, roles: ['super_admin', 'business_manager'] },
   { section: 'announcements', label: 'Announcements', icon: Megaphone, roles: ['super_admin', 'business_manager'] },
-  { section: 'reports', label: 'Reports', icon: Flag, roles: ['super_admin'] },
+  { section: 'reports', label: 'Sales reports', icon: Flag, roles: ['super_admin'] },
   { section: 'commissions', label: 'Commissions', icon: Percent, roles: ['super_admin'] },
+  { section: 'settings', label: 'Settings', icon: Settings, roles: ['super_admin'] },
 ];
 
 export const ADMIN_SECTIONS = new Set<string>(LINKS.map((l) => l.section));

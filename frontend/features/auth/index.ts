@@ -9,4 +9,5 @@ export type {
   ForgotPasswordResponse,
 } from './types';
 export { AUTH_TOKEN_KEY, AUTH_USER_KEY } from './types';
-export { AuthProvider, useAuth } from './AuthProvider';
+export { AuthProvider, useAuth, consumeAuthNotice } from './AuthProvider';
+export { RequireAadhaar } from './RequireAadhaar';

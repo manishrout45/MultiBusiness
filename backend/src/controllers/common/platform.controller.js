@@ -120,10 +120,22 @@ const getPublicFees = async (req, res, next) => {
   }
 };
 
+const getFreeListing = async (req, res, next) => {
+  try {
+    const { getFreeListingStatus, ensureFreePlan } = require('../../services/freeListing.service');
+    await ensureFreePlan();
+    const data = await getFreeListingStatus();
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getPublicTheme,
   updateTheme,
   getPublicBanners,
   getPublicAnnouncements,
   getPublicFees,
+  getFreeListing,
 };

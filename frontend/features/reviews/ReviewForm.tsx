@@ -30,6 +30,7 @@ export function ReviewForm({ businessId, businessName, products = [], onSubmitte
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [productId, setProductId] = useState<string>('business');
+  const [photos, setPhotos] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -50,11 +51,13 @@ export function ReviewForm({ businessId, businessName, products = [], onSubmitte
           rating,
           comment: comment.trim(),
           userName: user?.name ?? 'Guest customer',
+          photos,
         },
         token
       );
       setComment('');
       setRating(5);
+      setPhotos([]);
       toast({ title: 'Review submitted', description: 'Thank you for your feedback!', variant: 'success' });
       onSubmitted?.();
     } catch (err) {
@@ -112,9 +115,26 @@ export function ReviewForm({ businessId, businessName, products = [], onSubmitte
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="photos">Photos (optional, max 5)</Label>
+            <input
+              id="photos"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) =>
+                setPhotos(Array.from(e.target.files || []).slice(0, 5))
+              }
+              className="block w-full text-sm"
+            />
+            {photos.length > 0 && (
+              <p className="text-xs text-muted-foreground">{photos.length} photo(s) selected</p>
+            )}
+          </div>
+
           {!isAuthenticated && (
             <p className="text-xs text-muted-foreground">
-              Reviews are saved locally when not signed in. Sign in to sync with your account.
+              Sign in to submit reviews with photos to your account.
             </p>
           )}
 

@@ -5,6 +5,11 @@ const {
   isPaymentConfigured,
   verifyPayment,
 } = require('../../services/payment.service');
+const {
+  assertFreeSpotAvailable,
+  getFreeListingStatus,
+  ensureFreePlan,
+} = require('../../services/freeListing.service');
 
 const ensurePendingStatus = async () => {
   try {
@@ -34,7 +39,8 @@ const getSubscription = async (req, res, next) => {
       [business.id]
     );
 
-    res.json({ data: rows[0] || null });
+    const freeListing = await getFreeListingStatus();
+    res.json({ data: rows[0] || null, freeListing });
   } catch (err) {
     next(err);
   }
@@ -42,6 +48,7 @@ const getSubscription = async (req, res, next) => {
 
 const subscribe = async (req, res, next) => {
   try {
+    await ensureFreePlan();
     const business = await Business.findByOwner(req.user.id);
     if (!business) {
       return res.status(404).json({ message: 'Business profile not found' });
@@ -72,6 +79,9 @@ const subscribe = async (req, res, next) => {
     const formatDate = (d) => d.toISOString().slice(0, 10);
 
     const isFree = fee <= 0;
+    if (isFree) {
+      await assertFreeSpotAvailable(plans[0]);
+    }
     if (!isFree && !isPaymentConfigured()) {
       return res.status(501).json({
         message:
@@ -104,19 +114,21 @@ const subscribe = async (req, res, next) => {
     }
 
     const [rows] = await db.query(
-      `SELECT bs.*, sp.name AS plan_name, sp.monthly_fee, sp.yearly_fee
+      `SELECT bs.*, sp.name AS plan_name, sp.monthly_fee, sp.yearly_fee, sp.slug
        FROM business_subscriptions bs
        JOIN subscription_plans sp ON sp.id = bs.plan_id
        WHERE bs.id = ?`,
       [result.insertId]
     );
 
+    const freeListing = await getFreeListingStatus();
     res.status(201).json({
       message: isFree
-        ? 'Subscribed successfully'
+        ? 'Free listing activated'
         : 'Subscription pending payment. Complete gateway checkout, then call /vendor/subscription/confirm.',
       data: rows[0],
       payment: gateway,
+      freeListing,
     });
   } catch (err) {
     next(err);

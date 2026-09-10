@@ -32,14 +32,32 @@ const listBusinessReviews = async (req, res, next) => {
       [bizId]
     );
 
+    const ids = rows.map((r) => r.id);
+    let imagesByReview = {};
+    if (ids.length) {
+      const [images] = await db.query(
+        `SELECT review_id, id, file_path FROM review_images WHERE review_id IN (?)`,
+        [ids]
+      );
+      for (const img of images) {
+        if (!imagesByReview[img.review_id]) imagesByReview[img.review_id] = [];
+        imagesByReview[img.review_id].push({ id: img.id, file_path: img.file_path });
+      }
+    }
+
+    const data = rows.map((r) => ({
+      ...r,
+      images: imagesByReview[r.id] || [],
+    }));
+
     const avg =
-      rows.length > 0
-        ? Math.round((rows.reduce((s, r) => s + Number(r.rating), 0) / rows.length) * 10) / 10
+      data.length > 0
+        ? Math.round((data.reduce((s, r) => s + Number(r.rating), 0) / data.length) * 10) / 10
         : 0;
 
     res.json({
-      data: rows,
-      meta: { averageRating: avg, count: rows.length },
+      data,
+      meta: { averageRating: avg, count: data.length },
     });
   } catch (err) {
     next(err);

@@ -8,9 +8,9 @@ import { AuthSocialOptions } from '@/components/auth/AuthSocialOptions';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/features/auth';
+import { consumeAuthNotice, useAuth } from '@/features/auth';
 import { APP_NAME } from '@/lib/constants';
-import { ApiError } from '@/lib/api';
+import { ApiError, getMaxDevicesFromError } from '@/lib/api';
 import { sendPhoneOtpRequest } from '@/services/authService';
 import { cn } from '@/lib/utils';
 
@@ -33,22 +33,42 @@ export function LoginForm({ className }: { className?: string }) {
   const [showReset, setShowReset] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [pending, setPending] = useState(false);
+  const [deviceLimit, setDeviceLimit] = useState(false);
+  const [maxDevices, setMaxDevices] = useState(2);
 
   useEffect(() => {
     const presetEmail = searchParams.get('email');
     if (presetEmail) setEmail(presetEmail);
-    if (searchParams.get('registered') === '1') {
+    const remoteNotice = consumeAuthNotice();
+    if (remoteNotice) {
+      setNotice(remoteNotice);
+    } else if (searchParams.get('registered') === '1') {
       setNotice('Account created. Verify your email before signing in.');
     } else if (searchParams.get('verified') === '1') {
       setNotice('Email verified. Sign in with your email and password.');
     } else if (searchParams.get('reset') === '1') {
       setNotice('Password updated. Sign in with your new password.');
+    } else if (searchParams.get('reason') === 'session') {
+      setNotice(
+        'Signed out on this device — your account signed in elsewhere (device limit reached).'
+      );
     }
   }, [searchParams]);
 
-  const goNext = () => {
-    const next = searchParams.get('next') || '/';
-    router.push(next);
+  const goNext = (userRole?: string) => {
+    const next = searchParams.get('next');
+    if (next) {
+      router.push(next);
+      router.refresh();
+      return;
+    }
+    if (userRole === 'vendor') {
+      router.push('/vendor/dashboard');
+    } else if (userRole === 'business_manager' || userRole === 'super_admin') {
+      router.push('/admin/dashboard');
+    } else {
+      router.push('/');
+    }
     router.refresh();
   };
 
@@ -57,19 +77,27 @@ export function LoginForm({ className }: { className?: string }) {
     setError(null);
     setShowReset(false);
     setShowCreateAccount(false);
+    setDeviceLimit(false);
     setOtp('');
     setOtpSent(false);
     setDevOtp(null);
   };
 
-  const onEmailSubmit = async (event: React.FormEvent) => {
+  const onEmailSubmit = async (event: React.FormEvent, force = false) => {
     event.preventDefault();
     setError(null);
     setShowReset(false);
     setShowCreateAccount(false);
+    if (!force) setDeviceLimit(false);
     setPending(true);
     try {
-      await login({ email: email.trim(), password });
+      await login({ email: email.trim(), password, force: Boolean(force) });
+      setDeviceLimit(false);
+      setNotice(
+        force
+          ? 'Signed in on this device. Oldest device session was signed out.'
+          : null
+      );
       goNext();
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Unable to sign in';
@@ -82,11 +110,36 @@ export function LoginForm({ className }: { className?: string }) {
         setShowCreateAccount(true);
         return;
       }
+      if (err instanceof ApiError && err.code === 'DEVICE_LIMIT') {
+        setMaxDevices(getMaxDevicesFromError(err));
+        setDeviceLimit(true);
+        return;
+      }
       if (
         err instanceof ApiError &&
         (err.code === 'INVALID_PASSWORD' || err.code === 'INVALID_CREDENTIALS')
       ) {
         setShowReset(true);
+      }
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const continueOnThisDevice = async () => {
+    setError(null);
+    setPending(true);
+    try {
+      await login({ email: email.trim(), password, force: true });
+      setDeviceLimit(false);
+      setNotice('Signed in on this device. Oldest device session was signed out.');
+      goNext();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Unable to sign in';
+      setError(message);
+      if (err instanceof ApiError && err.code === 'DEVICE_LIMIT') {
+        setMaxDevices(getMaxDevicesFromError(err));
+        setDeviceLimit(true);
       }
     } finally {
       setPending(false);
@@ -110,15 +163,40 @@ export function LoginForm({ className }: { className?: string }) {
     }
   };
 
-  const onVerifyOtp = async (event: React.FormEvent) => {
+  const onVerifyOtp = async (event: React.FormEvent, force = false) => {
     event.preventDefault();
     setError(null);
+    if (!force) setDeviceLimit(false);
     setPending(true);
     try {
-      await loginWithPhone(phone.trim(), otp.trim());
+      await loginWithPhone(phone.trim(), otp.trim(), Boolean(force));
+      setDeviceLimit(false);
       goNext();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to verify OTP');
+      if (err instanceof ApiError && err.code === 'DEVICE_LIMIT') {
+        setMaxDevices(getMaxDevicesFromError(err));
+        setDeviceLimit(true);
+      }
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const continuePhoneOnThisDevice = async () => {
+    setError(null);
+    setPending(true);
+    try {
+      await loginWithPhone(phone.trim(), otp.trim(), true);
+      setDeviceLimit(false);
+      setNotice('Signed in on this device. Oldest device session was signed out.');
+      goNext();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to verify OTP');
+      if (err instanceof ApiError && err.code === 'DEVICE_LIMIT') {
+        setMaxDevices(getMaxDevicesFromError(err));
+        setDeviceLimit(true);
+      }
     } finally {
       setPending(false);
     }
@@ -135,7 +213,7 @@ export function LoginForm({ className }: { className?: string }) {
       )}
 
       {mode === 'email' ? (
-        <form onSubmit={onEmailSubmit} className="space-y-4">
+        <form onSubmit={(e) => void onEmailSubmit(e, false)} className="space-y-4">
           <Input
             id="email"
             type="email"
@@ -157,6 +235,28 @@ export function LoginForm({ className }: { className?: string }) {
             <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </p>
+          )}
+
+          {deviceLimit && (
+            <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950">
+              <p>
+                This account is already active on {maxDevices} device
+                {maxDevices === 1 ? '' : 's'} (limit from server settings).
+              </p>
+              <p className="text-xs text-amber-800/80">
+                Continue signs you in here and automatically signs out the oldest device. You do not
+                need to logout there first.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={pending}
+                onClick={() => void continueOnThisDevice()}
+              >
+                {pending ? 'Signing in…' : 'Continue & sign out oldest device'}
+              </Button>
+            </div>
           )}
 
           {showCreateAccount && (
@@ -197,7 +297,10 @@ export function LoginForm({ className }: { className?: string }) {
           </Button>
         </form>
       ) : (
-        <form onSubmit={otpSent ? onVerifyOtp : onSendOtp} className="space-y-4">
+        <form
+          onSubmit={otpSent ? (e) => void onVerifyOtp(e, false) : onSendOtp}
+          className="space-y-4"
+        >
           <Input
             id="phone"
             type="tel"
@@ -237,6 +340,24 @@ export function LoginForm({ className }: { className?: string }) {
             <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </p>
+          )}
+
+          {deviceLimit && otpSent && (
+            <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950">
+              <p>
+                This account is already active on {maxDevices} device
+                {maxDevices === 1 ? '' : 's'} (limit from server settings).
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={pending}
+                onClick={() => void continuePhoneOnThisDevice()}
+              >
+                {pending ? 'Signing in…' : 'Continue & sign out oldest device'}
+              </Button>
+            </div>
           )}
 
           <Button

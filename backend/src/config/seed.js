@@ -22,6 +22,7 @@ async function seed() {
   console.log('Seeding subscription plans...');
   await connection.query(`
     INSERT IGNORE INTO subscription_plans (name, slug, monthly_fee, yearly_fee, features, max_products) VALUES
+    ('Free Listing', 'free', 0.00, 0.00, '["Digital storefront","Limited product listings","Community support"]', 15),
     ('Basic', 'basic', 499.00, 4990.00, '["Digital storefront","Product listings","Business profile"]', 50),
     ('Standard', 'standard', 999.00, 9990.00, '["Everything in Basic","Analytics dashboard","Priority support"]', 200),
     ('Premium', 'premium', 1999.00, 19990.00, '["Everything in Standard","Marketing tools","Featured listing discount"]', 500),
@@ -154,7 +155,8 @@ async function seed() {
     ('support_phone', '1800-000-0000'),
     ('lead_fee', '50'),
     ('delivery_fee', '40'),
-    ('platform_fee', '0')
+    ('platform_fee', '0'),
+    ('free_listing_quota', '20')
     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
   `);
 

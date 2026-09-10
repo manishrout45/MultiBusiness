@@ -1,5 +1,5 @@
 import { REVIEWS_STORAGE_KEY } from '@/lib/constants';
-import { apiRequest } from '@/lib/api';
+import { apiRequest, getApiBaseUrl } from '@/lib/api';
 
 export interface Review {
   id: string;
@@ -10,6 +10,7 @@ export interface Review {
   rating: number;
   comment: string;
   createdAt: string;
+  images?: string[];
 }
 
 export interface SubmitReviewPayload {
@@ -19,6 +20,7 @@ export interface SubmitReviewPayload {
   rating: number;
   comment: string;
   userName: string;
+  photos?: File[];
 }
 
 function loadLocalReviews(businessId: string): Review[] {
@@ -62,6 +64,7 @@ export const reviewService = {
           user_name: string;
           product_id?: number;
           product_name?: string;
+          images?: Array<{ file_path: string }>;
         }>;
         meta?: { averageRating: number; count: number };
       }>(`/reviews?${qs.toString()}`);
@@ -75,6 +78,7 @@ export const reviewService = {
         rating: Number(r.rating),
         comment: r.comment || '',
         createdAt: r.created_at,
+        images: (r.images || []).map((i) => i.file_path).filter(Boolean),
       }));
 
       const local = loadLocalReviews(businessId);
@@ -96,34 +100,77 @@ export const reviewService = {
     token?: string | null
   ): Promise<Review> {
     if (token) {
-      try {
-        const res = await apiRequest<{
-          data: { id: number; rating: number; comment: string; created_at: string };
-        }>('/customer/reviews', {
+      const hasPhotos = Boolean(payload.photos?.length);
+      if (hasPhotos) {
+        const form = new FormData();
+        form.append('businessId', payload.businessId);
+        if (payload.productId) form.append('productId', payload.productId);
+        form.append('rating', String(payload.rating));
+        form.append('comment', payload.comment);
+        for (const file of payload.photos || []) form.append('photos', file);
+
+        const res = await fetch(`${getApiBaseUrl()}/customer/reviews`, {
           method: 'POST',
-          token,
-          body: {
-            businessId: Number(payload.businessId),
-            productId: payload.productId ? Number(payload.productId) : undefined,
-            rating: payload.rating,
-            comment: payload.comment,
-          },
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          body: form,
         });
+        const json = (await res.json()) as {
+          message?: string;
+          data?: {
+            id: number;
+            rating: number;
+            comment: string;
+            created_at: string;
+            images?: Array<{ file_path: string }>;
+          };
+        };
+        if (!res.ok) throw new Error(json.message || 'Review failed');
         const review: Review = {
-          id: String(res.data.id),
+          id: String(json.data?.id),
           businessId: payload.businessId,
           productId: payload.productId,
           productName: payload.productName,
           userName: payload.userName,
-          rating: res.data.rating,
-          comment: res.data.comment ?? payload.comment,
-          createdAt: res.data.created_at,
+          rating: Number(json.data?.rating ?? payload.rating),
+          comment: json.data?.comment ?? payload.comment,
+          createdAt: json.data?.created_at || new Date().toISOString(),
+          images: (json.data?.images || []).map((i) => i.file_path),
         };
         saveLocalReview(payload.businessId, review);
         return review;
-      } catch {
-        // fall through
       }
+
+      const res = await apiRequest<{
+        data: {
+          id: number;
+          rating: number;
+          comment: string;
+          created_at: string;
+          images?: Array<{ file_path: string }>;
+        };
+      }>('/customer/reviews', {
+        method: 'POST',
+        token,
+        body: {
+          businessId: Number(payload.businessId),
+          productId: payload.productId ? Number(payload.productId) : undefined,
+          rating: payload.rating,
+          comment: payload.comment,
+        },
+      });
+      const review: Review = {
+        id: String(res.data.id),
+        businessId: payload.businessId,
+        productId: payload.productId,
+        productName: payload.productName,
+        userName: payload.userName,
+        rating: res.data.rating,
+        comment: res.data.comment ?? payload.comment,
+        createdAt: res.data.created_at,
+        images: (res.data.images || []).map((i) => i.file_path),
+      };
+      saveLocalReview(payload.businessId, review);
+      return review;
     }
 
     const review: Review = {
@@ -135,6 +182,7 @@ export const reviewService = {
       rating: payload.rating,
       comment: payload.comment,
       createdAt: new Date().toISOString(),
+      images: [],
     };
     saveLocalReview(payload.businessId, review);
     return review;

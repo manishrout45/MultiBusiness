@@ -23,7 +23,11 @@ const User = {
 
   findById: async (id) => {
     const [rows] = await db.query(
-      'SELECT id, name, email, phone, role, status, avatar, created_at FROM users WHERE id = ?',
+      `SELECT id, name, email, phone, role, status, avatar,
+              email_verified, phone_verified,
+              aadhaar_verified, aadhaar_masked, aadhaar_verified_at,
+              created_at, updated_at
+       FROM users WHERE id = ?`,
       [id]
     );
     return rows[0] || null;

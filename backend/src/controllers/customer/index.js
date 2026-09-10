@@ -7,6 +7,8 @@
   profileController: require('./profile.controller.js'),
   refundController: require('./refund.controller.js'),
   reviewController: require('./review.controller.js'),
+  reportController: require('./report.controller.js'),
+  chatController: require('./chat.controller.js'),
   supportController: require('./support.controller.js'),
   wishlistController: require('./wishlist.controller.js'),
   walletController: require('./wallet.controller.js'),

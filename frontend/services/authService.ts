@@ -1,4 +1,5 @@
-import { apiRequest } from '@/lib/api';
+import { apiRequest, ApiError } from '@/lib/api';
+import { deviceAuthPayload } from '@/lib/device';
 import type {
   AuthResponse,
   AuthUser,
@@ -9,10 +10,16 @@ import type {
   RegisterResponse,
 } from '@/features/auth/types';
 
+export { ApiError };
+
 export async function loginRequest(input: LoginInput): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('/auth/login', {
     method: 'POST',
-    body: input,
+    body: deviceAuthPayload({
+      email: input.email,
+      password: input.password,
+      force: input.force === true,
+    }),
   });
 }
 
@@ -23,17 +30,20 @@ export async function registerRequest(input: RegisterInput): Promise<RegisterRes
   });
 }
 
-export async function fetchMe(token: string): Promise<{ data?: AuthUser } & AuthUser> {
+export async function fetchMe(token: string): Promise<{ user?: AuthUser } & AuthUser> {
   return apiRequest('/auth/me', {
     method: 'GET',
     token,
   });
 }
 
-export async function googleLoginRequest(idToken: string): Promise<AuthResponse> {
+export async function googleLoginRequest(
+  idToken: string,
+  force = false
+): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('/auth/google', {
     method: 'POST',
-    body: { idToken },
+    body: deviceAuthPayload({ idToken, force }),
   });
 }
 
@@ -46,11 +56,12 @@ export async function sendPhoneOtpRequest(phone: string): Promise<PhoneOtpSendRe
 
 export async function verifyPhoneOtpRequest(
   phone: string,
-  code: string
+  code: string,
+  force = false
 ): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('/auth/phone/verify-otp', {
     method: 'POST',
-    body: { phone, code },
+    body: deviceAuthPayload({ phone, code, force: force === true }),
   });
 }
 
@@ -83,4 +94,49 @@ export async function resetPasswordRequest(token: string, password: string): Pro
     method: 'POST',
     body: { token, password },
   });
+}
+
+export async function logoutRequest(token: string): Promise<void> {
+  try {
+    await apiRequest('/auth/logout', { method: 'POST', token });
+  } catch {
+    // ignore network errors on logout
+  }
+}
+
+export async function sendAadhaarOtpRequest(
+  token: string,
+  aadhaarNumber: string
+): Promise<{
+  message: string;
+  data: { verificationId: number; maskedAadhaar: string; expiresIn: number; devOtp?: string };
+}> {
+  return apiRequest('/auth/aadhaar/send-otp', {
+    method: 'POST',
+    token,
+    body: { aadhaarNumber },
+  });
+}
+
+export async function verifyAadhaarOtpRequest(
+  token: string,
+  verificationId: number,
+  code: string
+): Promise<{ message: string; user: AuthUser }> {
+  return apiRequest('/auth/aadhaar/verify-otp', {
+    method: 'POST',
+    token,
+    body: { verificationId, code },
+  });
+}
+
+export async function getAadhaarStatusRequest(token: string): Promise<{
+  data: {
+    required: boolean;
+    verified: boolean;
+    maskedAadhaar: string | null;
+    providerMode: string;
+  };
+}> {
+  return apiRequest('/auth/aadhaar/status', { method: 'GET', token });
 }

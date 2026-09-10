@@ -53,5 +53,10 @@ router.patch('/announcements/:id', authorizeAdminOrManager, manager.promotionCon
 router.get('/offers', authorizeAdminOrManager, manager.adController.listAds);
 router.post('/offers', authorizeAdminOrManager, manager.adController.createAd);
 router.patch('/offers/:id', authorizeAdminOrManager, manager.adController.updateAd);
+router.get('/content-reports', authorizeAdminOrManager, admin.contentReportController.listReports);
+router.patch('/content-reports/:id', authorizeAdminOrManager, admin.contentReportController.updateReport);
+router.get('/chat', authorizeAdminOrManager, require('../controllers/customer/chat.controller').listThreads);
+router.get('/chat/:id', authorizeAdminOrManager, require('../controllers/customer/chat.controller').getThread);
+router.post('/chat/:id/messages', authorizeAdminOrManager, require('../controllers/customer/chat.controller').sendMessage);
 
 module.exports = router;
